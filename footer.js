@@ -30,23 +30,28 @@ const footerSocialLinks = [
 		label: "Bluesky",
 		href: "https://bsky.app/profile/theevadevil.bsky.social",
 		icon: "bluesky.svg",
+		extraClass: "",
 	},
 	{
 		label: "Reddit",
 		href: "https://www.reddit.com/r/EvaDeVil/",
 		icon: "reddit.svg",
+		extraClass: "",
 	},
 	{
 		label: "X.com",
 		href: "https://x.com/TheEvaDeVil",
 		icon: "x.svg",
+		extraClass: "",
 	},
 	{
 		label: "Instagram",
 		href: "https://www.instagram.com/evadevilgoddess",
 		icon: "instagram.svg",
+		extraClass: "",
 	},
 ];
+
 
 function appendTextElement(parent, tagName, className, text) {
 	const element = document.createElement(tagName);
@@ -56,26 +61,18 @@ function appendTextElement(parent, tagName, className, text) {
 	return element;
 }
 
-function createFooterLink(
-	{ href, label, icon, extraClass = "" },
-	kind,
-	assetPrefix,
-) {
+function createFooterLink({ href, label, icon, extraClass = "" }, kind, assetPrefix) {
 	const link = document.createElement("a");
-	link.className = ["footer-link", `footer-link-${kind}`, extraClass]
-		.filter(Boolean)
-		.join(" ");
+	link.className = ["footer-link", "footer-link-" + kind, extraClass].filter(Boolean).join(" ");
 	link.href = href;
 	link.target = "_blank";
 	link.rel = "noopener noreferrer";
 	link.setAttribute("aria-label", label);
-
 	const image = document.createElement("img");
 	image.className = "footer-icon";
-	image.src = `${assetPrefix}${icon}`;
+	image.src = assetPrefix + icon;
 	image.alt = "";
 	image.setAttribute("aria-hidden", "true");
-
 	link.append(image);
 	return link;
 }
@@ -83,53 +80,32 @@ function createFooterLink(
 class EvaFooter extends HTMLElement {
 	connectedCallback() {
 		if (this.dataset.ready) return;
-
 		const assetPrefix = this.getAttribute("asset-prefix") || "assets/";
 		const footer = document.createElement("footer");
 		footer.className = "site-footer";
-
 		const identity = document.createElement("div");
 		identity.className = "footer-identity";
-		const copyright = appendTextElement(
-			identity,
-			"span",
-			"footer-copyright",
-			"©",
-		);
+		const copyright = appendTextElement(identity, "span", "footer-copyright", "\u00A9");
 		copyright.setAttribute("aria-label", "Copyright");
-
 		const brandLockup = document.createElement("div");
 		brandLockup.className = "footer-brand-lockup";
-		const brand = appendTextElement(
-			brandLockup,
-			"a",
-			"footer-brand",
-			"Eva de Vil",
-		);
+		const brand = appendTextElement(brandLockup, "a", "footer-brand", "Eva de Vil");
 		brand.href = "https://evadevil.com/";
 		brand.rel = "noopener";
 		brand.setAttribute("aria-label", "Visit Eva de Vil main site");
-		appendTextElement(brandLockup, "span", "footer-year", "2026");
+		appendTextElement(brandLockup, "span", "footer-year", new Date().getFullYear().toString());
 		identity.append(brandLockup);
-
 		const nav = document.createElement("nav");
 		nav.className = "footer-links";
 		nav.setAttribute("aria-label", "Eva de Vil links");
-
 		const stores = document.createElement("div");
 		stores.className = "footer-link-group";
 		stores.setAttribute("aria-label", "Creator stores");
-		footerStoreLinks.forEach((link) => {
-			stores.append(createFooterLink(link, "adult", assetPrefix));
-		});
-
+		footerStoreLinks.forEach((l) => stores.append(createFooterLink(l, "adult", assetPrefix)));
 		const socials = document.createElement("div");
 		socials.className = "footer-link-group footer-link-group-social";
 		socials.setAttribute("aria-label", "Social profiles");
-		footerSocialLinks.forEach((link) => {
-			socials.append(createFooterLink(link, "social", assetPrefix));
-		});
-
+		footerSocialLinks.forEach((l) => socials.append(createFooterLink(l, "social", assetPrefix)));
 		nav.append(stores, socials);
 		footer.append(identity, nav);
 		this.dataset.ready = "true";

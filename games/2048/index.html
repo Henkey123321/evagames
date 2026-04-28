@@ -3,44 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>2048 | Eva Games</title>
-    <meta
-      name="description"
-      content="Play Eva Games 2048, a polished tile game with Eva de Vil styling."
-    />
+    <title>2048 | Eva Games | Eva de Vil</title>
+    <meta name="description" content="Play 2048 on Eva Games." />
     <link rel="canonical" href="https://evagames.org/games/2048/" />
-    <meta property="og:title" content="2048 | Eva Games" />
-    <meta property="og:description" content="Play Eva Games 2048." />
+    <meta property="og:title" content="2048 | Eva Games | Eva de Vil" />
+    <meta property="og:description" content="Play 2048 on Eva Games." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://evagames.org/games/2048/" />
     <meta name="theme-color" content="#FFE0F6" />
     <link rel="icon" href="../../favicon.ico" sizes="48x48" />
     <link rel="icon" href="../../favicon-192.png" sizes="192x192" type="image/png" />
     <link rel="apple-touch-icon" href="../../favicon-192.png" />
-    <link rel="preload" as="image" href="assets/2.gif" />
-    <link rel="preload" as="image" href="assets/4.gif" />
-    <link rel="preload" as="image" href="assets/8.gif" />
-    <link rel="preload" as="image" href="assets/16.gif" />
-    <link rel="preload" as="image" href="assets/32.gif" />
-    <link rel="preload" as="image" href="assets/64.gif" />
-    <link rel="preload" as="image" href="assets/128.gif" />
-    <link rel="preload" as="image" href="assets/256.gif" />
-    <link rel="preload" as="image" href="assets/512.gif" />
-    <link rel="preload" as="image" href="assets/1024.gif" />
-    <link rel="preload" as="image" href="assets/2048.gif" />
-    <link
-      rel="preload"
-      as="image"
-      href="assets/body-left.png"
-      media="(min-width: 1101px)"
-    />
-    <link
-      rel="preload"
-      as="image"
-      href="assets/body-right.png"
-      media="(min-width: 1101px)"
-    />
+    <link rel="stylesheet" href="../../css/tokens.css" />
+    <link rel="stylesheet" href="../../css/base.css" />
+    <link rel="stylesheet" href="../../css/footer.css" />
+    <link rel="stylesheet" href="../../css/game.css" />
     <link rel="stylesheet" href="styles.css" />
+    <script>window.__GAME_CONFIG__ = {"bg_toggle_default":true,"board_size":4,"four_spawn_chance":0.1,"instructions":"Slide the room with arrow keys, WASD, or a swipe. Matching tiles merge. Reach 2048 and the game ends.","lose_copy":"No more moves.","lose_message":"Game over","move_duration_ms":100,"win_copy":"The room is complete.","win_message":"2048","win_value":2048,"assets":[]};</script>
     <script src="../../footer.js" defer></script>
     <script src="game.js" defer></script>
   </head>
@@ -54,69 +32,15 @@
 
       <main class="game-main" aria-labelledby="game-title">
         <div class="game-layout">
-          <img
-            class="game-body-art game-body-art-left"
-            src="assets/body-left.png"
-            alt=""
-            aria-hidden="true"
-          />
-          <section class="game-stage" aria-describedby="game-instructions">
+          <img class="game-body-art game-body-art-left" src="assets/body-left.png" alt="" aria-hidden="true" />
+          <section class="game-stage" id="game-stage">
             <div class="game-copy">
               <h1 id="game-title">2048</h1>
-              <p id="game-instructions" class="game-instructions">
-                Slide the room with arrow keys, WASD, or a swipe. Matching tiles
-                merge. Reach 2048 and the game ends.
-              </p>
+              <p id="game-instructions" class="game-instructions">Slide the room with arrow keys, WASD, or a swipe. Matching tiles merge. Reach 2048 and the game ends.</p>
             </div>
-
-            <div class="scorebar" aria-label="Score summary">
-              <div class="scorebox">
-                <span>Score</span>
-                <strong id="score">0</strong>
-              </div>
-              <div class="scorebox">
-                <span>Best</span>
-                <strong id="best-score">0</strong>
-              </div>
-            </div>
-
-            <div class="controls" aria-label="Game controls">
-              <button class="control-button" id="new-game" type="button">
-                New game
-              </button>
-              <label class="control-button bg-toggle">
-                <input id="bg-toggle" type="checkbox" checked />
-                <span>BG on</span>
-              </label>
-            </div>
-
-            <div class="board-wrap" id="board-wrap">
-              <div
-                class="game-board"
-                id="game-board"
-                role="application"
-                aria-label="2048 board"
-                tabindex="0"
-              ></div>
-              <div class="game-message" id="game-message" hidden>
-                <p id="message-title">Game over</p>
-                <span id="message-copy">No more moves.</span>
-                <button
-                  class="control-button"
-                  id="message-new-game"
-                  type="button"
-                >
-                  Play again
-                </button>
-              </div>
-            </div>
+            <div id="game-container"></div>
           </section>
-          <img
-            class="game-body-art game-body-art-right"
-            src="assets/body-right.png"
-            alt=""
-            aria-hidden="true"
-          />
+          <img class="game-body-art game-body-art-right" src="assets/body-right.png" alt="" aria-hidden="true" />
         </div>
       </main>
 
