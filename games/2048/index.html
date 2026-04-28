@@ -11,14 +11,34 @@
     <meta property="og:type" content="website" />
     <meta name="theme-color" content="#FFE0F6" />
     <link rel="icon" href="../../favicon.ico" sizes="48x48" />
-    <link rel="icon" href="../../favicon-192.png" sizes="192x192" type="image/png" />
+    <link
+      rel="icon"
+      href="../../favicon-192.png"
+      sizes="192x192"
+      type="image/png"
+    />
     <link rel="apple-touch-icon" href="../../favicon-192.png" />
     <link rel="stylesheet" href="../../css/tokens.css" />
     <link rel="stylesheet" href="../../css/base.css" />
     <link rel="stylesheet" href="../../css/footer.css" />
     <link rel="stylesheet" href="../../css/game.css" />
     <link rel="stylesheet" href="../2048/styles.css" />
-    <script>window.__GAME_CONFIG__ = {"bg_toggle_default":true,"board_size":4,"four_spawn_chance":0.1,"instructions":"Slide the room with arrow keys, WASD, or a swipe. Matching tiles merge. Reach 2048 and the game ends.","lose_copy":"No more moves.","lose_message":"Game over","move_duration_ms":100,"win_copy":"The room is complete.","win_message":"2048","win_value":2048,"assets":[]};</script>
+    <script>
+      window.__GAME_CONFIG__ = {
+        bg_toggle_default: true,
+        board_size: 4,
+        four_spawn_chance: 0.1,
+        instructions:
+          "Slide the room with arrow keys, WASD, or a swipe. Matching tiles merge. Reach 2048 and the game ends.",
+        lose_copy: "No more moves.",
+        lose_message: "Game over",
+        move_duration_ms: 150,
+        win_copy: "The room is complete.",
+        win_message: "2048",
+        win_value: 2048,
+        assets: [],
+      };
+    </script>
     <script src="../../footer.js" defer></script>
     <script src="../2048/game.js" defer></script>
   </head>
@@ -32,15 +52,28 @@
 
       <main class="game-main" aria-labelledby="game-title">
         <div class="game-layout">
-          <img class="game-body-art game-body-art-left" src="assets/body-left.png" alt="" aria-hidden="true" />
+          <img
+            class="game-body-art game-body-art-left"
+            src="assets/body-left.png"
+            alt=""
+            aria-hidden="true"
+          />
           <section class="game-stage" id="game-stage">
             <div class="game-copy">
               <h1 id="game-title">2048</h1>
-              <p id="game-instructions" class="game-instructions">Slide the room with arrow keys, WASD, or a swipe. Matching tiles merge. Reach 2048 and the game ends.</p>
+              <p id="game-instructions" class="game-instructions">
+                Slide the room with arrow keys, WASD, or a swipe. Matching tiles
+                merge. Reach 2048 and the game ends.
+              </p>
             </div>
             <div id="game-container"></div>
           </section>
-          <img class="game-body-art game-body-art-right" src="assets/body-right.png" alt="" aria-hidden="true" />
+          <img
+            class="game-body-art game-body-art-right"
+            src="assets/body-right.png"
+            alt=""
+            aria-hidden="true"
+          />
         </div>
       </main>
 

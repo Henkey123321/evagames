@@ -8,7 +8,7 @@ const CFG = Object.assign(
 		board_size: 4,
 		win_value: 2048,
 		four_spawn_chance: 0.1,
-		move_duration_ms: 100,
+		move_duration_ms: 150,
 		bg_toggle_default: true,
 		win_message: "2048",
 		win_copy: "The room is complete.",
@@ -25,6 +25,7 @@ const MOVE_DURATION = CFG.move_duration_ms;
 const FOUR_CHANCE = CFG.four_spawn_chance;
 
 const GIF_VALUES = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+const INITIAL_GIF_VALUES = [2, 4, 8];
 const VALUES_WITH_GIFS = new Set(GIF_VALUES);
 const TILE_ASSET_MAP = resolveTileAssets();
 const STORAGE_KEY = "eva-2048-state";
@@ -108,6 +109,7 @@ let ended = false;
 let animating = false;
 let disableTileArrival = false;
 let animationTimer = 0;
+let queuedDirection = null;
 let touchStart = null;
 const preloadedGifImages = [];
 
@@ -150,16 +152,39 @@ function preloadGifs() {
 	preloadShelf.setAttribute("aria-hidden", "true");
 	document.body.append(preloadShelf);
 
-	for (const value of GIF_VALUES) {
+	const loadGif = (value, fetchPriority = "auto") => {
+		const path = gifPath(value);
+		if (!path) return;
+
 		const image = new Image();
 		image.alt = "";
-		image.decoding = "sync";
-		image.fetchPriority = "high";
+		image.decoding = "async";
+		image.fetchPriority = fetchPriority;
 		image.loading = "eager";
-		image.src = gifPath(value);
+		image.src = path;
 		preloadShelf.append(image);
 		preloadedGifImages.push(image);
-	}
+	};
+
+	INITIAL_GIF_VALUES.forEach((value) => loadGif(value, "high"));
+
+	const remainingGifValues = GIF_VALUES.filter(
+		(value) => !INITIAL_GIF_VALUES.includes(value),
+	);
+	const scheduleRemaining = () => {
+		if (remainingGifValues.length === 0) return;
+		if ("requestIdleCallback" in window) {
+			window.requestIdleCallback(preloadNext, { timeout: 1800 });
+		} else {
+			window.setTimeout(preloadNext, 250);
+		}
+	};
+	const preloadNext = () => {
+		if (!animating) loadGif(remainingGifValues.shift(), "low");
+		scheduleRemaining();
+	};
+
+	scheduleRemaining();
 }
 
 function highestValue() {
@@ -222,6 +247,7 @@ function saveState() {
 /* ── Game logic ───────────────────────────────────────────────── */
 
 function startNewGame(shouldFocus = true) {
+	queuedDirection = null;
 	clearAnimation();
 	board = createEmptyBoard();
 	score = 0;
@@ -255,7 +281,10 @@ function addRandomTile() {
 
 function move(direction) {
 	if (ended) return;
-	if (animating) finishAnimation();
+	if (animating) {
+		queuedDirection = direction;
+		return;
+	}
 
 	const previous = cloneBoard(board);
 	let result;
@@ -503,8 +532,13 @@ function animateMove(transitions, renderOptions) {
 	const cellHeight = boardRect.height / SIZE;
 	const clones = transitions.map((transition) => {
 		const tile = document.createElement("span");
+		const isMoving =
+			transition.from.row !== transition.to.row ||
+			transition.from.column !== transition.to.column;
 		tile.className = "tile tile-clone";
 		tile.dataset.value = String(transition.value);
+		if (isMoving) tile.dataset.moving = "true";
+		tile.style.setProperty("--move-duration", `${MOVE_DURATION}ms`);
 		tile.style.setProperty("--tile-gif", tileGif(transition.value));
 		tile.style.setProperty("--from-column", transition.from.column);
 		tile.style.setProperty("--from-row", transition.from.row);
@@ -520,14 +554,44 @@ function animateMove(transitions, renderOptions) {
 		return tile;
 	});
 
+	const movingClones = clones.filter((tile) => tile.dataset.moving === "true");
+	let remainingMoves = movingClones.length;
+
+	const finishOnce = () => {
+		if (!animating) return;
+		if (animationTimer) {
+			window.clearTimeout(animationTimer);
+			animationTimer = 0;
+		}
+		clearAnimation();
+		playQueuedMove();
+	};
+
+	if (movingClones.length > 0) {
+		for (const tile of movingClones) {
+			tile.addEventListener(
+				"transitionend",
+				(event) => {
+					if (event.propertyName !== "transform") return;
+					remainingMoves -= 1;
+					if (remainingMoves === 0) finishOnce();
+				},
+				{ once: true },
+			);
+		}
+	}
+
 	requestAnimationFrame(() => {
 		for (const tile of clones) tile.classList.add("is-moving");
 	});
 
-	animationTimer = window.setTimeout(() => {
-		animationTimer = 0;
-		clearAnimation();
-	}, MOVE_DURATION + 24);
+	animationTimer = window.setTimeout(finishOnce, MOVE_DURATION + 80);
+}
+
+function playQueuedMove() {
+	const direction = queuedDirection;
+	queuedDirection = null;
+	if (direction) move(direction);
 }
 
 function finishAnimation() {
@@ -536,6 +600,7 @@ function finishAnimation() {
 	render();
 	disableTileArrival = false;
 	clearAnimation();
+	playQueuedMove();
 }
 
 function clearAnimation() {
@@ -636,10 +701,10 @@ boardElement.addEventListener("touchstart", handleTouchStart, {
 });
 boardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
 
-preloadGifs();
 setBackgroundEnabled(
 	localStorage.getItem(BG_KEY) !== null
 		? localStorage.getItem(BG_KEY) !== "0"
 		: CFG.bg_toggle_default,
 );
 if (loadState()) render();
+requestAnimationFrame(preloadGifs);
