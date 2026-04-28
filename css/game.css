@@ -1,0 +1,224 @@
+/*
+  Shared game-page layout: header override, stage, scorebar, controls,
+  board wrapper, end-game message, and responsive breakpoints.
+  Replaces the old games.css.
+*/
+
+.site-header {
+	padding: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.4rem, 4vw, 2.6rem);
+}
+
+.game-main {
+	padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.game-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(320px, 46rem) minmax(0, 1fr);
+	align-items: end;
+	justify-content: center;
+	gap: 0;
+}
+
+.game-body-art {
+	z-index: 0;
+	width: clamp(300px, 28vw, 620px);
+	max-width: none;
+	align-self: end;
+	object-fit: contain;
+	pointer-events: none;
+	user-select: none;
+}
+
+.game-body-art-left {
+	justify-self: end;
+	margin-right: -1px;
+}
+
+.game-body-art-right {
+	justify-self: start;
+	margin-left: -1px;
+}
+
+.game-stage {
+	position: relative;
+	z-index: 1;
+	width: min(100%, 46rem);
+	margin: 0 auto;
+}
+
+.game-copy {
+	display: grid;
+	gap: 0.4rem;
+	margin-bottom: clamp(0.75rem, 2vw, 1.1rem);
+}
+
+.game-copy h1 {
+	margin: 0;
+	font-size: clamp(3rem, 10vw, 6.8rem);
+	font-weight: 950;
+	line-height: 0.84;
+	letter-spacing: -0.075em;
+}
+
+.game-instructions {
+	max-width: 52ch;
+	margin: 0;
+	font-size: clamp(0.9rem, 1.35vw, 1rem);
+	font-weight: 700;
+	line-height: 1.38;
+	color: var(--ink-soft);
+}
+
+.scorebar,
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	gap: 0;
+}
+
+.scorebar {
+	border-top: 1px solid var(--line);
+	border-left: 1px solid var(--line);
+}
+
+.scorebox {
+	display: grid;
+	min-width: 7.25rem;
+	padding: 0.58rem 0.8rem;
+	background: var(--panel);
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+}
+
+.scorebox span {
+	font-size: 0.62rem;
+	font-weight: 850;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--eva-mauve);
+}
+
+.scorebox strong {
+	position: relative;
+	font-size: clamp(1.45rem, 3.2vw, 2.15rem);
+	font-weight: 950;
+	line-height: 0.96;
+	letter-spacing: -0.06em;
+}
+
+.controls {
+	margin: 0.55rem 0 clamp(0.75rem, 2vw, 1rem);
+}
+
+.control-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.5rem;
+	padding: 0.55rem 0.8rem;
+	border: 1px solid var(--line);
+	font-size: 0.68rem;
+	font-weight: 850;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--panel);
+	cursor: pointer;
+	transition:
+		background-color 150ms ease-out,
+		color 150ms ease-out,
+		transform 150ms ease-out;
+}
+
+.control-button:hover:not(:disabled) {
+	color: var(--field);
+	background: var(--eva-red);
+	transform: translateY(-1px);
+}
+
+.control-button:disabled {
+	color: var(--eva-mauve);
+	background: var(--panel-muted);
+	cursor: not-allowed;
+}
+
+.board-wrap {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	border-top: 1px solid var(--line);
+	border-left: 1px solid var(--line);
+	background: var(--panel);
+}
+
+.game-message {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: grid;
+	place-content: center;
+	justify-items: center;
+	gap: 0.75rem;
+	padding: 1.5rem;
+	text-align: center;
+	background: oklch(93% 0.029 336 / 0.9);
+	animation: message-fade-in 360ms ease-out both;
+}
+
+.game-message[hidden] {
+	display: none;
+}
+
+.game-message p {
+	margin: 0;
+	font-size: clamp(2.8rem, 9vw, 6.4rem);
+	font-weight: 950;
+	line-height: 0.82;
+	letter-spacing: -0.075em;
+}
+
+.game-message span {
+	max-width: 36ch;
+	font-size: 0.84rem;
+	font-weight: 850;
+	line-height: 1.35;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+@keyframes message-fade-in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+	.game-layout {
+		grid-template-columns: minmax(0, 46rem);
+	}
+
+	.game-body-art {
+		display: none;
+	}
+}
+
+@media (max-width: 520px) {
+	.scorebar,
+	.controls {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.scorebox,
+	.control-button {
+		min-width: 0;
+	}
+}

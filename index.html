@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eva Games | Eva de Vil</title>
+    <meta
+      name="description"
+      content="A simple Eva de Vil games hub with 2048, Memory, and future game placeholders."
+    />
+    <link rel="canonical" href="https://evagames.org/" />
+    <meta property="og:title" content="Eva Games | Eva de Vil" />
+    <meta property="og:description" content="A simple Eva de Vil games hub." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://evagames.org/" />
+    <meta name="theme-color" content="#FFE0F6" />
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="favicon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="favicon-192.png" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/footer.css" />
+    <link rel="stylesheet" href="css/home.css" />
+    <script src="footer.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#games">Skip to games</a>
+
+    <div class="page-shell">
+      <header class="site-header" aria-label="Site header">
+        <a class="brand-mark" href="https://evagames.org/" aria-current="page">
+          Eva Games
+        </a>
+      </header>
+
+      <main id="games" class="games-section">
+        <h1 class="sr-only">Eva Games</h1>
+
+        <div class="games-layout">
+          <img
+            class="body-art body-art-left"
+            src="assets/body-left.png"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <div class="game-grid" aria-label="Game launcher">
+            <article class="game-tile game-tile-available">
+              <span class="tile-number">01</span>
+              <h2><a class="game-card-link" href="games/2048/">2048</a></h2>
+              <span class="status">Play</span>
+            </article>
+
+            <article class="game-tile game-tile-available">
+              <span class="tile-number">02</span>
+              <h2><a class="game-card-link" href="games/memory/">Memory</a></h2>
+              <span class="status">Play</span>
+            </article>
+
+            <article class="game-tile game-tile-wide empty">
+              <span class="tile-number">03</span>
+              <h2>More coming soon</h2>
+              <span class="status">Reserved</span>
+            </article>
+          </div>
+
+          <img
+            class="body-art body-art-right"
+            src="assets/body-right.png"
+            alt=""
+            aria-hidden="true"
+          />
+        </div>
+      </main>
+
+      <eva-footer></eva-footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+name = "goddess-dashboard"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "goddess-db"
+database_id = "e9863bdf-9843-4513-94ca-1baeb7086688"
+migrations_dir = "migrations"
+
+[vars]
+GITHUB_REPO = "Henkey123321/evagames"
+GITHUB_BRANCH = "main"
+
+# GITHUB_TOKEN and JWT_SECRET are set via `wrangler secret put`
+

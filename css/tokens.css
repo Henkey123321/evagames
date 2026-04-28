@@ -1,0 +1,44 @@
+/*
+  Design tokens for Eva Games.
+  Compact OKLCH palette based on https://www.evadevil.com/
+*/
+
+@font-face {
+	font-family: "Advantage";
+	src: url("../fonts/Advantage-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+	color-scheme: light;
+
+	/* Palette */
+	--eva-pink: oklch(93.849% 0.0444 336.32); /* #FFE0F6 */
+	--eva-red: oklch(34.318% 0.13946 25.95); /* #70000A */
+	--eva-red-dark: oklch(21.501% 0.08675 22.79); /* #380005 */
+	--eva-blush: oklch(86.531% 0.03854 13.9); /* #EBC9CB */
+	--eva-rose: oklch(64.512% 0.07793 13.13); /* #B87A80 */
+	--eva-mauve: oklch(60.096% 0.05978 13.37); /* #A17276 */
+	--eva-bg: oklch(28.804% 0.02431 14.52); /* #362627 */
+	--eva-black: oklch(30.221% 0.00143 17.24); /* #2F2E2E */
+	--eva-white: oklch(100.000% 0 89.88); /* #FFFFFF */
+
+	/* Semantic tokens */
+	--ink: var(--eva-red);
+	--ink-soft: oklch(42% 0.071 18);
+	--field: oklch(80.94% 0.052 15.15);
+	--panel: oklch(93% 0.029 336);
+	--panel-muted: oklch(86% 0.042 15);
+	--line: oklch(42% 0.09 20 / 0.42);
+	--footer-adult: var(--eva-black);
+	--footer-social: oklch(98% 0.006 336);
+	--footer-social-field: var(--eva-red-dark);
+	--focus-ring: 0 0 0 0.22rem oklch(34.318% 0.13946 25.95 / 0.28);
+
+	/* Typography */
+	--font-ui:
+		Avenir Next, Avenir, Montserrat, Corbel, Trebuchet MS, Segoe UI, system-ui,
+		sans-serif;
+}

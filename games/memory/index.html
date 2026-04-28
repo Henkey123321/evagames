@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Memory | Eva Games</title>
+    <meta
+      name="description"
+      content="Play Eva Games Memory, a polished matching game with Eva de Vil styling."
+    />
+    <link rel="canonical" href="https://evagames.org/games/memory/" />
+    <meta property="og:title" content="Memory | Eva Games" />
+    <meta property="og:description" content="Play Eva Games Memory." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://evagames.org/games/memory/" />
+    <meta name="theme-color" content="#FFE0F6" />
+    <link rel="icon" href="../../favicon.ico" sizes="48x48" />
+    <link rel="icon" href="../../favicon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="../../favicon-192.png" />
+    <link
+      rel="preload"
+      as="image"
+      href="assets/body-left.png"
+      media="(min-width: 1101px)"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="assets/body-right.png"
+      media="(min-width: 1101px)"
+    />
+    <link href="styles.css" rel="stylesheet" />
+    <script src="game.js" defer></script>
+    <script src="../../footer.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#memory-board">Skip to memory board</a>
+
+    <div class="page-shell">
+      <header class="site-header" aria-label="Eva Games header">
+        <a class="brand-mark" href="../../" aria-label="Back to Eva Games home">
+          Eva Games
+        </a>
+      </header>
+
+      <main class="game-main" id="memory-game" aria-labelledby="game-title">
+        <div class="game-layout">
+          <img
+            class="game-body-art game-body-art-left memory-body-art"
+            src="assets/body-left.png"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <section class="game-stage" aria-describedby="game-instructions">
+            <div class="game-copy">
+              <h1 id="game-title">Memory</h1>
+              <p id="game-instructions" class="game-instructions">
+                Turn over two cards. Keep the pair, remember the room, clear the
+                board with as few moves as possible.
+              </p>
+            </div>
+
+            <div class="scorebar" aria-label="Game summary">
+              <div class="scorebox">
+                <span>Moves</span>
+                <strong id="moves">0</strong>
+              </div>
+              <div class="scorebox">
+                <span>Matches</span>
+                <strong id="matches">0/8</strong>
+              </div>
+              <div class="scorebox">
+                <span>Time</span>
+                <strong id="timer">0:00</strong>
+              </div>
+              <div class="scorebox scorebox-best">
+                <span>Best</span>
+                <strong id="best-score">None</strong>
+              </div>
+            </div>
+
+            <div class="controls memory-controls" aria-label="Memory controls">
+              <button class="control-button" id="new-game" type="button">
+                Restart
+              </button>
+            </div>
+
+            <div class="board-wrap memory-board-wrap" id="board-wrap">
+              <div
+                class="memory-board"
+                id="memory-board"
+                role="group"
+                aria-label="Memory board"
+              ></div>
+              <div class="game-message" id="game-message" hidden>
+                <p id="message-title">Cleared</p>
+                <span id="message-copy">The room is yours.</span>
+                <button
+                  class="control-button"
+                  id="message-new-game"
+                  type="button"
+                >
+                  Play again
+                </button>
+              </div>
+            </div>
+
+            <p class="sr-only" id="memory-status" aria-live="polite"></p>
+          </section>
+
+          <img
+            class="game-body-art game-body-art-right memory-body-art"
+            src="assets/body-right.png"
+            alt=""
+            aria-hidden="true"
+          />
+        </div>
+      </main>
+
+      <eva-footer asset-prefix="../../assets/"></eva-footer>
+    </div>
+  </body>
+</html>
