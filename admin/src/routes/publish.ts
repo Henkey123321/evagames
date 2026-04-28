@@ -62,6 +62,7 @@ function ghHeaders(token: string): Record<string, string> {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
     "Content-Type": "application/json",
+    "User-Agent": "goddess-dashboard/1.0",
   };
 }
 
@@ -77,7 +78,10 @@ async function commitToGitHub(
 
   // 1. Get latest commit on branch
   const refRes = await fetch(`${api}/git/ref/heads/${branch}`, { headers });
-  if (!refRes.ok) throw new Error(`GitHub: could not get ref (${refRes.status})`);
+  if (!refRes.ok) {
+    const body = await refRes.text();
+    throw new Error(`GitHub: could not get ref (${refRes.status}) - ${body}`);
+  }
   const ref = await refRes.json() as { object: { sha: string } };
   const latestSha = ref.object.sha;
 

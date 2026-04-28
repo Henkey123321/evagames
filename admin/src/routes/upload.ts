@@ -37,6 +37,7 @@ upload.post("/", async (c) => {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
     "Content-Type": "application/json",
+    "User-Agent": "goddess-dashboard/1.0",
   };
 
   // Use the Contents API for single-file commits (simpler)
