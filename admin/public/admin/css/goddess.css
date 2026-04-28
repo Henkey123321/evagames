@@ -133,7 +133,31 @@ body {
   font-weight: 700;
 }
 
-.g-nav-icon { font-size: 1rem; width: 1.35rem; text-align: center; }
+.g-nav-icon {
+  width: 1.35rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.g-nav-icon svg { width: 16px; height: 16px; }
+
+/* Inline SVG icon alignment helpers */
+.g-publish-banner-text svg,
+.g-card-title svg,
+.g-btn svg,
+p svg {
+  display: inline-block;
+  vertical-align: -0.15em;
+  margin-right: 0.15em;
+}
+
+.g-stat-icon {
+  display: flex;
+  align-items: center;
+}
+.g-stat-icon svg { width: 22px; height: 22px; }
 
 .g-nav-divider {
   height: 1px;
