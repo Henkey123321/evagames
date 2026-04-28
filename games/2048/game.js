@@ -1,22 +1,104 @@
-const SIZE = 4;
-const WIN_VALUE = 2048;
-const MOVE_DURATION = 100;
+/* ──────────────────────────────────────────────────────────────────
+   2048 — Self-bootstrapping game module.
+   Builds all DOM into #game-container, reads window.__GAME_CONFIG__.
+   ────────────────────────────────────────────────────────────────── */
+
+const CFG = Object.assign(
+	{
+		board_size: 4,
+		win_value: 2048,
+		four_spawn_chance: 0.1,
+		move_duration_ms: 100,
+		bg_toggle_default: true,
+		win_message: "2048",
+		win_copy: "The room is complete.",
+		lose_message: "Game over",
+		lose_copy: "No more moves.",
+		assets: [],
+	},
+	window.__GAME_CONFIG__ || {},
+);
+
+const SIZE = CFG.board_size;
+const WIN_VALUE = CFG.win_value;
+const MOVE_DURATION = CFG.move_duration_ms;
+const FOUR_CHANCE = CFG.four_spawn_chance;
+
 const GIF_VALUES = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 const VALUES_WITH_GIFS = new Set(GIF_VALUES);
 const STORAGE_KEY = "eva-2048-state";
 const BEST_KEY = "eva-2048-best";
 const BG_KEY = "eva-2048-bg";
 
-const boardElement = document.querySelector("#game-board");
-const boardWrap = document.querySelector("#board-wrap");
-const scoreElement = document.querySelector("#score");
-const bestElement = document.querySelector("#best-score");
-const newGameButton = document.querySelector("#new-game");
-const messageNewGameButton = document.querySelector("#message-new-game");
-const message = document.querySelector("#game-message");
-const messageTitle = document.querySelector("#message-title");
-const messageCopy = document.querySelector("#message-copy");
-const bgToggle = document.querySelector("#bg-toggle");
+/* ── DOM construction ─────────────────────────────────────────── */
+
+function buildUI() {
+	const container = document.getElementById("game-container");
+	if (!container) {
+		console.error("2048: #game-container not found");
+		return null;
+	}
+
+	container.innerHTML = `
+		<div class="scorebar">
+			<div class="scorebox">
+				<span>Score</span>
+				<strong id="score">0</strong>
+			</div>
+			<div class="scorebox">
+				<span>Best</span>
+				<strong id="best-score">0</strong>
+			</div>
+		</div>
+		<div class="controls">
+			<button class="control-button" id="new-game" type="button">New game</button>
+			<label class="control-button bg-toggle" id="bg-toggle-label">
+				<input type="checkbox" id="bg-toggle" />
+				<span>BG on</span>
+			</label>
+		</div>
+		<div class="board-wrap" id="board-wrap">
+			<div class="game-board" id="game-board" tabindex="0" role="grid"
+				 style="grid-template-columns: repeat(${SIZE}, minmax(0, 1fr));"
+				 aria-label="2048 game board"></div>
+			<div class="game-message" id="game-message" hidden>
+				<p id="message-title"></p>
+				<span id="message-copy"></span>
+				<button class="control-button" id="message-new-game" type="button">Play again</button>
+			</div>
+		</div>`;
+
+	return {
+		boardElement: container.querySelector("#game-board"),
+		boardWrap: container.querySelector("#board-wrap"),
+		scoreElement: container.querySelector("#score"),
+		bestElement: container.querySelector("#best-score"),
+		newGameButton: container.querySelector("#new-game"),
+		messageNewGameButton: container.querySelector("#message-new-game"),
+		message: container.querySelector("#game-message"),
+		messageTitle: container.querySelector("#message-title"),
+		messageCopy: container.querySelector("#message-copy"),
+		bgToggle: container.querySelector("#bg-toggle"),
+	};
+}
+
+const dom = buildUI();
+if (!dom) throw new Error("2048: failed to build UI");
+
+const {
+	boardElement,
+	boardWrap,
+	scoreElement,
+	bestElement,
+	newGameButton,
+	messageNewGameButton,
+	message,
+	messageTitle,
+	messageCopy,
+	bgToggle,
+} = dom;
+
+/* ── State ────────────────────────────────────────────────────── */
 
 let board = createEmptyBoard();
 let score = 0;
@@ -27,6 +109,8 @@ let disableTileArrival = false;
 let animationTimer = 0;
 let touchStart = null;
 const preloadedGifImages = [];
+
+/* ── Board helpers ────────────────────────────────────────────── */
 
 function createEmptyBoard() {
 	return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -74,6 +158,8 @@ function highestGifValue() {
 	return Math.min(highest, WIN_VALUE);
 }
 
+/* ── Persistence ──────────────────────────────────────────────── */
+
 function loadState() {
 	const savedBest = Number(localStorage.getItem(BEST_KEY));
 	best = Number.isFinite(savedBest) ? savedBest : 0;
@@ -119,6 +205,8 @@ function saveState() {
 	localStorage.setItem(BEST_KEY, String(best));
 }
 
+/* ── Game logic ───────────────────────────────────────────────── */
+
 function startNewGame(shouldFocus = true) {
 	clearAnimation();
 	board = createEmptyBoard();
@@ -146,7 +234,7 @@ function addRandomTile() {
 	if (emptyCells.length === 0) return null;
 	const [row, column] =
 		emptyCells[Math.floor(Math.random() * emptyCells.length)];
-	const value = Math.random() < 0.9 ? 2 : 4;
+	const value = Math.random() < (1 - FOUR_CHANCE) ? 2 : 4;
 	board[row][column] = value;
 	return { row, column, value };
 }
@@ -196,7 +284,10 @@ function moveRows(direction) {
 	let gained = 0;
 
 	for (let row = 0; row < SIZE; row += 1) {
-		const columns = direction === "right" ? [3, 2, 1, 0] : [0, 1, 2, 3];
+		const columns =
+			direction === "right"
+				? Array.from({ length: SIZE }, (_, i) => SIZE - 1 - i)
+				: Array.from({ length: SIZE }, (_, i) => i);
 		const entries = columns
 			.filter((column) => board[row][column] !== 0)
 			.map((column) => ({ value: board[row][column], row, column }));
@@ -224,7 +315,10 @@ function moveColumns(direction) {
 	let gained = 0;
 
 	for (let column = 0; column < SIZE; column += 1) {
-		const rows = direction === "down" ? [3, 2, 1, 0] : [0, 1, 2, 3];
+		const rows =
+			direction === "down"
+				? Array.from({ length: SIZE }, (_, i) => SIZE - 1 - i)
+				: Array.from({ length: SIZE }, (_, i) => i);
 		const entries = rows
 			.filter((row) => board[row][column] !== 0)
 			.map((row) => ({ value: board[row][column], row, column }));
@@ -309,6 +403,8 @@ function hasAvailableMove() {
 	return false;
 }
 
+/* ── Rendering ────────────────────────────────────────────────── */
+
 function cellKey(row, column) {
 	return `${row}:${column}`;
 }
@@ -364,6 +460,8 @@ function render({ newCells = [], mergedCells = [], scoreDelta = 0 } = {}) {
 	updateBackground();
 	updateMessage();
 }
+
+/* ── Animation ────────────────────────────────────────────────── */
 
 function animateMove(transitions, renderOptions) {
 	const reduceMotion = window.matchMedia(
@@ -450,8 +548,8 @@ function updateMessage() {
 	}
 
 	const won = highestValue() >= WIN_VALUE;
-	messageTitle.textContent = won ? "2048" : "Game over";
-	messageCopy.textContent = won ? "The room is complete." : "No more moves.";
+	messageTitle.textContent = won ? CFG.win_message : CFG.lose_message;
+	messageCopy.textContent = won ? CFG.win_copy : CFG.lose_copy;
 	message.hidden = false;
 }
 
@@ -465,6 +563,8 @@ function setBackgroundEnabled(enabled) {
 	bgToggle.nextElementSibling.textContent = enabled ? "BG on" : "BG off";
 	localStorage.setItem(BG_KEY, enabled ? "1" : "0");
 }
+
+/* ── Input handling ───────────────────────────────────────────── */
 
 function handleKeydown(event) {
 	const directionKeys = {
@@ -509,6 +609,8 @@ function handleTouchEnd(event) {
 	}
 }
 
+/* ── Wire up events & boot ────────────────────────────────────── */
+
 newGameButton.addEventListener("click", () => startNewGame());
 messageNewGameButton.addEventListener("click", () => startNewGame());
 bgToggle.addEventListener("change", () =>
@@ -521,5 +623,9 @@ boardElement.addEventListener("touchstart", handleTouchStart, {
 boardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
 
 preloadGifs();
-setBackgroundEnabled(localStorage.getItem(BG_KEY) !== "0");
+setBackgroundEnabled(
+	localStorage.getItem(BG_KEY) !== null
+		? localStorage.getItem(BG_KEY) !== "0"
+		: CFG.bg_toggle_default,
+);
 if (loadState()) render();
