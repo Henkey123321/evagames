@@ -212,7 +212,7 @@ function renderLayout(app) {
 		{ id: "site-config", icon: icon("settings"), label: "Site Config" },
 		{ id: "design", icon: icon("palette"), label: "Design Tokens" },
 		{ id: "footer", icon: icon("link"), label: "Footer Links" },
-		{ id: "bodyart", icon: icon("image"), label: "Body Art" },
+		{ id: "upload", icon: icon("image"), label: "Upload" },
 		{ id: "history", icon: icon("history"), label: "History" },
 		{ id: "publish", icon: icon("rocket"), label: "Publish" },
 		{ id: "users", icon: icon("settings"), label: "Users" },
@@ -311,8 +311,8 @@ async function loadView() {
 				case "footer":
 					await viewFooterLinks(container);
 					break;
-				case "bodyart":
-					await viewBodyArt(container);
+				case "upload":
+					await viewUpload(container);
 					break;
 				case "history":
 					await viewHistory(container);
@@ -607,48 +607,95 @@ function showFooterLinkModal(link) {
 	);
 }
 
-async function viewBodyArt(el) {
-	const data = await api("/body-art");
-	el.innerHTML = `
-    <div class="g-page-header"><div><h2 class="g-page-title">Body Art</h2><p class="g-page-subtitle">Decorative images for each page</p></div></div>
-    <div class="g-card"><div class="g-card-header"><h3 class="g-card-title">Assignments</h3><button class="g-btn g-btn-sm" id="add-body-art">+ Add</button></div>
-    <table class="g-table"><thead><tr><th>Page</th><th>Position</th><th>Image</th><th></th></tr></thead>
-    <tbody>${data.bodyArt.map((a) => `<tr><td>${esc(a.page_ref)}</td><td>${esc(a.position)}</td><td><input class="g-input" value="${attr(a.image_filename)}" data-body-file="${attr(a.page_ref)}:${attr(a.position)}" /></td><td><button class="g-btn g-btn-sm g-btn-primary" data-save-body="${attr(a.page_ref)}:${attr(a.position)}">Save</button></td></tr>`).join("")}</tbody></table></div>`;
+async function viewUpload(el) {
+	const gamesData = await api("/games");
+	const gameDetails = await Promise.all(
+		gamesData.games
+			.filter((g) => g.status === "available")
+			.map((g) => api(`/games/${g.slug}`).catch(() => null)),
+	);
+	const targets = [
+		{
+			id: "site",
+			label: "Site assets",
+			help: "Uploads to /assets for icons, footer images, and shared site files.",
+			folder: "assets",
+			accept: "image/*,.svg,.ico",
+			multiple: true,
+		},
+	];
+	for (const detail of gameDetails) {
+		if (!detail?.game || !detail?.template?.assetSlots) continue;
+		for (const slot of detail.template.assetSlots) {
+			targets.push({
+				id: `game:${detail.game.slug}:${slot.key}`,
+				label: `${detail.game.title}: ${slot.label}`,
+				help: `${slot.description} Uploads to /games/${detail.game.slug}/assets and attaches to this game.`,
+				folder: `games/${detail.game.slug}/assets`,
+				accept: slot.accept || "*/*",
+				multiple: Boolean(slot.multiple),
+				gameSlug: detail.game.slug,
+				slotKey: slot.key,
+			});
+		}
+	}
 
-	document.getElementById("add-body-art").onclick = () =>
-		showModal(
-			"Add body art",
-			`
-		<div class="g-field"><label class="g-label">Page ref</label><input class="g-input" name="page_ref" required /></div>
-		<div class="g-field"><label class="g-label">Position</label><select class="g-select" name="position"><option value="left">Left</option><option value="right">Right</option></select></div>
-		<div class="g-field"><label class="g-label">Image filename</label><input class="g-input" name="image_filename" required /></div>
-	`,
-			async (fd) => {
-				await api("/body-art", {
-					method: "PUT",
-					body: Object.fromEntries(fd.entries()),
-				});
-				toast("Body art saved", "success");
-				loadView();
-			},
-		);
-	el.querySelectorAll("[data-save-body]").forEach((btn) => {
-		btn.onclick = async () => {
-			const [page_ref, position] = btn.dataset.saveBody.split(":");
-			const input = el.querySelector(
-				`[data-body-file="${btn.dataset.saveBody}"]`,
-			);
-			try {
-				await api("/body-art", {
-					method: "PUT",
-					body: { page_ref, position, image_filename: input.value },
-				});
-				toast("Body art saved", "success");
-			} catch (e) {
-				toast(e.message, "error");
+	el.innerHTML = `
+    <div class="g-page-header"><div><h2 class="g-page-title">Upload</h2><p class="g-page-subtitle">Add site assets and game media from one place</p></div></div>
+    <div class="g-card"><form id="upload-form">
+      <div class="g-field"><label class="g-label">Target</label><select class="g-select" id="upload-target">${targets.map((t) => `<option value="${attr(t.id)}">${esc(t.label)}</option>`).join("")}</select><p class="g-help" id="upload-help"></p></div>
+      <div class="g-field"><label class="g-label">Files</label><input class="g-input" type="file" id="upload-files" required /></div>
+      <button class="g-btn g-btn-primary" id="upload-submit" type="submit">Upload</button>
+    </form><div id="upload-results" style="margin-top:1rem"></div></div>`;
+
+	const select = document.getElementById("upload-target");
+	const fileInput = document.getElementById("upload-files");
+	const help = document.getElementById("upload-help");
+	const targetById = new Map(targets.map((t) => [t.id, t]));
+	const syncTarget = () => {
+		const target = targetById.get(select.value) || targets[0];
+		fileInput.accept = target.accept;
+		fileInput.multiple = target.multiple;
+		fileInput.value = "";
+		help.textContent = target.help;
+	};
+	select.onchange = syncTarget;
+	syncTarget();
+
+	document.getElementById("upload-form").onsubmit = async (e) => {
+		e.preventDefault();
+		const target = targetById.get(select.value) || targets[0];
+		const files = [...fileInput.files];
+		if (!files.length) return toast("Choose a file first", "error");
+		const submit = document.getElementById("upload-submit");
+		const resultsEl = document.getElementById("upload-results");
+		submit.disabled = true;
+		resultsEl.innerHTML = '<div class="g-spinner"></div>';
+		try {
+			const uploaded = [];
+			for (const file of files) {
+				const filename = safeFileName(file.name);
+				const fd = new FormData();
+				fd.append("file", file);
+				fd.append("path", `${target.folder}/${filename}`);
+				fd.append("filename", filename);
+				if (target.gameSlug && target.slotKey) {
+					fd.append("game_slug", target.gameSlug);
+					fd.append("slot_key", target.slotKey);
+				}
+				const result = await api("/upload", { method: "POST", body: fd });
+				uploaded.push(result.path);
 			}
-		};
-	});
+			resultsEl.innerHTML = `<p style="color:var(--g-success)">${icon("check")} Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}</p><ul style="margin-top:0.5rem;padding-left:1.25rem;color:var(--g-ink-muted);font-size:0.82rem">${uploaded.map((p) => `<li><code>${esc(p)}</code></li>`).join("")}</ul>`;
+			fileInput.value = "";
+			toast("Uploaded", "success");
+		} catch (err) {
+			resultsEl.innerHTML = `<p style="color:var(--g-danger)">${icon("x")} ${esc(err.message)}</p>`;
+			toast(err.message, "error");
+		} finally {
+			submit.disabled = false;
+		}
+	};
 }
 
 async function viewHistory(el) {
@@ -787,8 +834,6 @@ async function viewGameEditor(el, slug) {
 			input = `<input class="g-input" name="${attr(def.key)}" value="${attr(val)}" />`;
 		return `<div class="g-field"><label class="g-label">${esc(def.label)}</label>${input}<p class="g-help">${esc(def.description)}</p></div>`;
 	};
-	const renderAssetSlot = (slot) =>
-		`<div class="g-asset-slot"><div><strong>${esc(slot.label)}</strong><p class="g-help">${esc(slot.description)}${slot.key === "tile_gif" ? " Name tile files by value, e.g. 2.gif, 4.gif." : ""}</p></div><form class="g-upload-form" data-slot="${attr(slot.key)}"><input class="g-input" type="file" name="file" ${slot.multiple ? "multiple" : ""} accept="${attr(slot.accept)}" /><button class="g-btn g-btn-sm" type="submit">Upload</button></form></div>`;
 	el.innerHTML = `
     <div class="g-page-header"><div><h2 class="g-page-title">${esc(g.title)}</h2><p class="g-page-subtitle">Template: ${esc(g.template_id)} · Slug: ${esc(g.slug)}</p></div><button class="g-btn" id="back-to-games">← Back</button></div>
     <div class="g-card"><div class="g-card-header"><h3 class="g-card-title">Game Info</h3></div><form id="game-meta-form">
@@ -797,11 +842,7 @@ async function viewGameEditor(el, slug) {
       <div class="g-field"><label class="g-label">Status</label><select class="g-select" name="status"><option value="available" ${g.status === "available" ? "selected" : ""}>Available</option><option value="coming_soon" ${g.status === "coming_soon" ? "selected" : ""}>Coming Soon</option><option value="reserved" ${g.status === "reserved" ? "selected" : ""}>Reserved</option></select></div>
       <div class="g-field"><label class="g-label">Status Label</label><input class="g-input" name="status_label" value="${attr(g.status_label)}" /></div>
       <button class="g-btn g-btn-primary" type="submit">Save Info</button></form></div>
-    ${simpleSettings.length ? `<div class="g-card"><div class="g-card-header"><h3 class="g-card-title">Settings</h3></div><form id="game-settings-form">${simpleSettings.map(renderField).join("")}${advSettings.length ? `<button type="button" class="g-advanced-toggle" id="adv-toggle"><span class="arrow">▶</span> Advanced Settings</button><div class="g-advanced-panel" id="adv-panel">${advSettings.map(renderField).join("")}</div>` : ""}<button class="g-btn g-btn-primary" type="submit" style="margin-top:1rem">Save Settings</button></form></div>` : ""}
-    <div class="g-card"><div class="g-card-header"><h3 class="g-card-title">Assets</h3></div>
-      ${(tmpl?.assetSlots || []).map(renderAssetSlot).join("")}
-      ${data.assets.length ? `<table class="g-table" style="margin-top:0.75rem"><thead><tr><th>Slot</th><th>Filename</th><th>Type</th></tr></thead><tbody>${data.assets.map((a) => `<tr><td>${esc(a.slot_key)}</td><td>${esc(a.original_name)}</td><td>${esc(a.mime_type)}</td></tr>`).join("")}</tbody></table>` : `<p class="g-help">No assets uploaded.</p>`}
-    </div>`;
+    ${simpleSettings.length ? `<div class="g-card"><div class="g-card-header"><h3 class="g-card-title">Settings</h3></div><form id="game-settings-form">${simpleSettings.map(renderField).join("")}${advSettings.length ? `<button type="button" class="g-advanced-toggle" id="adv-toggle"><span class="arrow">▶</span> Advanced Settings</button><div class="g-advanced-panel" id="adv-panel">${advSettings.map(renderField).join("")}</div>` : ""}<button class="g-btn g-btn-primary" type="submit" style="margin-top:1rem">Save Settings</button></form></div>` : ""}`;
 	document.getElementById("back-to-games").onclick = () => navigate("games");
 	const advToggle = document.getElementById("adv-toggle");
 	if (advToggle)
@@ -842,25 +883,6 @@ async function viewGameEditor(el, slug) {
 				toast(err.message, "error");
 			}
 		};
-	el.querySelectorAll(".g-upload-form").forEach((form) => {
-		form.onsubmit = async (e) => {
-			e.preventDefault();
-			const files = [...form.querySelector('input[type="file"]').files];
-			if (!files.length) return toast("Choose a file first", "error");
-			for (const file of files) {
-				const fd = new FormData();
-				const filename = safeFileName(file.name);
-				fd.append("file", file);
-				fd.append("path", `games/${g.slug}/assets/${filename}`);
-				fd.append("game_slug", g.slug);
-				fd.append("slot_key", form.dataset.slot);
-				fd.append("filename", filename);
-				await api("/upload", { method: "POST", body: fd });
-			}
-			toast("Uploaded", "success");
-			loadView();
-		};
-	});
 }
 
 async function viewUsers(el) {
