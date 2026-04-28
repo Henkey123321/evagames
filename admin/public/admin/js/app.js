@@ -369,7 +369,7 @@ async function viewGameEditor(el, slug) {
     let input;
     if (def.type === 'textarea') input = `<textarea class="g-textarea" name="${def.key}">${val}</textarea>`;
     else if (def.type === 'boolean') input = `<label class="g-toggle"><input type="checkbox" name="${def.key}" ${val?'checked':''} /><span class="g-toggle-track"></span> ${val?'On':'Off'}</label>`;
-    else if (def.type === 'number') input = `<input class="g-input" type="number" name="${def.key}" value="${val}" ${def.validation?.min!==undefined?'min="'+def.validation.min+'"':''} ${def.validation?.max!==undefined?'max="'+def.validation.max+'"':''} />`;
+    else if (def.type === 'number') input = `<input class="g-input" type="number" name="${def.key}" value="${val}" step="any" ${def.validation?.min!==undefined?'min="'+def.validation.min+'"':''} ${def.validation?.max!==undefined?'max="'+def.validation.max+'"':''} />`;
     else if (def.type === 'select') input = `<select class="g-select" name="${def.key}">${(def.options||[]).map(o=>`<option value="${o.value}" ${o.value==val?'selected':''}>${o.label}</option>`).join('')}</select>`;
     else input = `<input class="g-input" name="${def.key}" value="${String(val).replace(/"/g,'&quot;')}" />`;
     return `<div class="g-field"><label class="g-label">${def.label}</label>${input}<p class="g-help">${def.description}</p></div>`;
