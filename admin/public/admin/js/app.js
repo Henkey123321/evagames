@@ -614,16 +614,7 @@ async function viewUpload(el) {
 			.filter((g) => g.status === "available")
 			.map((g) => api(`/games/${g.slug}`).catch(() => null)),
 	);
-	const targets = [
-		{
-			id: "site",
-			label: "Site assets",
-			help: "Uploads to /assets for icons, footer images, and shared site files.",
-			folder: "assets",
-			accept: "image/*,.svg,.ico",
-			multiple: true,
-		},
-	];
+	const targets = [];
 	for (const detail of gameDetails) {
 		if (!detail?.game || !detail?.template?.assetSlots) continue;
 		for (const slot of detail.template.assetSlots) {
@@ -640,8 +631,15 @@ async function viewUpload(el) {
 		}
 	}
 
+	if (!targets.length) {
+		el.innerHTML = `
+    <div class="g-page-header"><div><h2 class="g-page-title">Upload</h2><p class="g-page-subtitle">Game media uploads</p></div></div>
+    <div class="g-card"><p class="g-help">No game upload targets available.</p></div>`;
+		return;
+	}
+
 	el.innerHTML = `
-    <div class="g-page-header"><div><h2 class="g-page-title">Upload</h2><p class="g-page-subtitle">Add site assets and game media from one place</p></div></div>
+    <div class="g-page-header"><div><h2 class="g-page-title">Upload</h2><p class="g-page-subtitle">Game media uploads</p></div></div>
     <div class="g-card"><form id="upload-form">
       <div class="g-field"><label class="g-label">Target</label><select class="g-select" id="upload-target">${targets.map((t) => `<option value="${attr(t.id)}">${esc(t.label)}</option>`).join("")}</select><p class="g-help" id="upload-help"></p></div>
       <div class="g-field"><label class="g-label">Files</label><input class="g-input" type="file" id="upload-files" required /></div>
