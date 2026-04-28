@@ -10,7 +10,8 @@ const CFG = Object.assign(
 		card_back_text: "E",
 		win_message: "Cleared",
 		win_copy: "The room is yours.",
-		instructions: "Turn over two cards. Keep the pair, remember the room, clear the board with as few moves as possible.",
+		instructions:
+			"Turn over two cards. Keep the pair, remember the room, clear the board with as few moves as possible.",
 		assets: [],
 	},
 	window.__GAME_CONFIG__ || {},
@@ -62,6 +63,21 @@ function resolveCardImages() {
 
 /* ── DOM construction ─────────────────────────────────────────── */
 
+function createScoreBox(label, value, id, extraClass = "") {
+	const box = document.createElement("div");
+	box.className = `scorebox${extraClass}`;
+
+	const labelEl = document.createElement("span");
+	labelEl.textContent = label;
+
+	const valueEl = document.createElement("strong");
+	valueEl.id = id;
+	valueEl.textContent = value;
+
+	box.append(labelEl, valueEl);
+	return { box, valueEl };
+}
+
 function buildUI() {
 	const container = document.getElementById("game-container");
 	if (!container) {
@@ -72,59 +88,80 @@ function buildUI() {
 	// Compute grid columns from pairs
 	const totalCards = PAIRS * 2;
 	const cols = Math.ceil(Math.sqrt(totalCards));
+	const rows = Math.ceil(totalCards / cols);
 
-	container.innerHTML = `
-		<div class="scorebar">
-			<div class="scorebox">
-				<span>Moves</span>
-				<strong id="moves">0</strong>
-			</div>
-			<div class="scorebox">
-				<span>Matches</span>
-				<strong id="matches">0/${PAIRS}</strong>
-			</div>
-			<div class="scorebox">
-				<span>Time</span>
-				<strong id="timer">0:00</strong>
-			</div>
-			<div class="scorebox scorebox-best">
-				<span>Best</span>
-				<strong id="best-score">None</strong>
-			</div>
-		</div>
-		<div class="controls">
-			<button class="control-button" id="new-game" type="button">New game</button>
-		</div>
-		<div class="board-wrap" id="board-wrap">
-			<div class="memory-board" id="memory-board"
-				 style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${Math.ceil(totalCards / cols)}, minmax(0, 1fr));"
-				 role="grid" aria-label="Memory game board"></div>
-			<div class="game-message" id="game-message" hidden>
-				<p id="message-title">${escapeHtml(CFG.win_message)}</p>
-				<span id="message-copy"></span>
-				<button class="control-button" id="message-new-game" type="button">Play again</button>
-			</div>
-		</div>
-		<div class="sr-only" id="memory-status" aria-live="polite" aria-atomic="true"></div>`;
+	container.replaceChildren();
+
+	const scorebar = document.createElement("div");
+	scorebar.className = "scorebar";
+	const moves = createScoreBox("Moves", "0", "moves");
+	const matches = createScoreBox("Matches", `0/${PAIRS}`, "matches");
+	const timer = createScoreBox("Time", "0:00", "timer");
+	const best = createScoreBox("Best", "None", "best-score", " scorebox-best");
+	scorebar.append(moves.box, matches.box, timer.box, best.box);
+
+	const controls = document.createElement("div");
+	controls.className = "controls";
+	const newGameButton = document.createElement("button");
+	newGameButton.className = "control-button";
+	newGameButton.id = "new-game";
+	newGameButton.type = "button";
+	newGameButton.textContent = "New game";
+	controls.append(newGameButton);
+
+	const boardWrap = document.createElement("div");
+	boardWrap.className = "board-wrap";
+	boardWrap.id = "board-wrap";
+
+	const board = document.createElement("div");
+	board.className = "memory-board";
+	board.id = "memory-board";
+	board.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+	board.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+	board.setAttribute("role", "grid");
+	board.setAttribute("aria-label", "Memory game board");
+
+	const message = document.createElement("div");
+	message.className = "game-message";
+	message.id = "game-message";
+	message.hidden = true;
+
+	const messageTitle = document.createElement("p");
+	messageTitle.id = "message-title";
+	messageTitle.textContent = CFG.win_message;
+
+	const messageCopy = document.createElement("span");
+	messageCopy.id = "message-copy";
+
+	const messageNewGameButton = document.createElement("button");
+	messageNewGameButton.className = "control-button";
+	messageNewGameButton.id = "message-new-game";
+	messageNewGameButton.type = "button";
+	messageNewGameButton.textContent = "Play again";
+
+	message.append(messageTitle, messageCopy, messageNewGameButton);
+	boardWrap.append(board, message);
+
+	const statusEl = document.createElement("div");
+	statusEl.className = "sr-only";
+	statusEl.id = "memory-status";
+	statusEl.setAttribute("aria-live", "polite");
+	statusEl.setAttribute("aria-atomic", "true");
+
+	container.append(scorebar, controls, boardWrap, statusEl);
 
 	return {
-		board: container.querySelector("#memory-board"),
-		movesEl: container.querySelector("#moves"),
-		matchesEl: container.querySelector("#matches"),
-		timerEl: container.querySelector("#timer"),
-		bestScoreEl: container.querySelector("#best-score"),
-		newGameButton: container.querySelector("#new-game"),
-		message: container.querySelector("#game-message"),
-		messageCopy: container.querySelector("#message-copy"),
-		messageNewGameButton: container.querySelector("#message-new-game"),
-		statusEl: container.querySelector("#memory-status"),
+		board,
+		movesEl: moves.valueEl,
+		matchesEl: matches.valueEl,
+		timerEl: timer.valueEl,
+		bestScoreEl: best.valueEl,
+		newGameButton,
+		message,
+		messageCopy,
+		messageNewGameButton,
+		statusEl,
 	};
-}
-
-function escapeHtml(str) {
-	const div = document.createElement("div");
-	div.textContent = str;
-	return div.innerHTML;
 }
 
 const dom = buildUI();
@@ -232,6 +269,26 @@ function stopTimer() {
 
 /* ── Card creation ────────────────────────────────────────────── */
 
+const PRELOADED_CARD_IMAGES = new Map();
+
+function cardAssetPath(file) {
+	return `assets/${file}`;
+}
+
+function preloadCardImages(deck) {
+	const uniqueImages = new Set(deck.map((card) => card.image));
+
+	for (const file of uniqueImages) {
+		const src = cardAssetPath(file);
+		if (PRELOADED_CARD_IMAGES.has(src)) continue;
+
+		const image = new Image();
+		image.decoding = "async";
+		image.src = src;
+		PRELOADED_CARD_IMAGES.set(src, image);
+	}
+}
+
 function createCard(card, index) {
 	const button = document.createElement("button");
 	button.className = "memory-card";
@@ -257,9 +314,9 @@ function createCard(card, index) {
 	front.setAttribute("aria-hidden", "true");
 
 	const image = document.createElement("img");
-	image.dataset.src = `assets/${card.image}`;
+	image.src = cardAssetPath(card.image);
 	image.alt = "";
-	image.loading = index < 4 ? "eager" : "lazy";
+	image.loading = "eager";
 	image.decoding = "async";
 	image.draggable = false;
 	front.append(image);
@@ -290,7 +347,9 @@ function buildDeck() {
 
 function renderBoard() {
 	board.replaceChildren();
-	cards = buildDeck().map((card, index) => {
+	const deck = buildDeck();
+	preloadCardImages(deck);
+	cards = deck.map((card, index) => {
 		const element = createCard(card, index);
 		board.append(element);
 		return element;
@@ -305,13 +364,9 @@ function cardImage(card) {
 
 function showCardMedia(card) {
 	const image = cardImage(card);
-	if (!image || image.dataset.playing === "true") return;
+	if (!image) return;
 
 	image.dataset.playing = "true";
-	image.removeAttribute("src");
-	requestAnimationFrame(() => {
-		image.src = image.dataset.src;
-	});
 }
 
 function hideCardMedia(card) {
@@ -319,7 +374,6 @@ function hideCardMedia(card) {
 	if (!image || card.classList.contains("is-matched")) return;
 
 	image.dataset.playing = "false";
-	image.removeAttribute("src");
 }
 
 function setCardVisible(card, visible) {
