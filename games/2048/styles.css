@@ -36,8 +36,7 @@
 	transition: background 180ms ease-out;
 }
 
-body:not(.bg-on) .board-wrap,
-.board-wrap.animating {
+body:not(.bg-on) .board-wrap {
 	background: var(--panel);
 }
 

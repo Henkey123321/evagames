@@ -621,6 +621,9 @@ function animateMove(transitions, renderOptions) {
 		}
 	}
 
+	// Force browser to commit starting positions before applying transform.
+	// Without this, fast input / busy frames can coalesce start + end styles and jump.
+	tileLayer.getBoundingClientRect();
 	requestAnimationFrame(() => {
 		for (const tile of tiles) tile.classList.add("is-moving");
 	});
@@ -631,7 +634,7 @@ function animateMove(transitions, renderOptions) {
 function playQueuedMove() {
 	const direction = queuedDirection;
 	queuedDirection = null;
-	if (direction) move(direction);
+	if (direction) requestAnimationFrame(() => move(direction));
 }
 
 function finishAnimation() {
