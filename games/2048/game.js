@@ -115,7 +115,6 @@ let animationTimer = 0;
 let queuedDirection = null;
 let touchStart = null;
 const gridCells = [];
-const preloadedGifImages = [];
 
 /* ── Board helpers ────────────────────────────────────────────── */
 
@@ -151,26 +150,15 @@ function tileGif(value) {
 }
 
 function preloadGifs() {
-	const preloadShelf = document.createElement("div");
-	preloadShelf.className = "gif-preload";
-	preloadShelf.setAttribute("aria-hidden", "true");
-	document.body.append(preloadShelf);
-
-	const loadGif = (value, fetchPriority = "auto") => {
+	const preloadValue = (value) => {
 		const path = gifPath(value);
 		if (!path) return;
-
-		const image = new Image();
-		image.alt = "";
-		image.decoding = "async";
-		image.fetchPriority = fetchPriority;
-		image.loading = "eager";
-		image.src = path;
-		preloadShelf.append(image);
-		preloadedGifImages.push(image);
+		fetch(path, { cache: "force-cache" }).catch(() => {
+			/* Visible tiles still load normally if cache warming fails. */
+		});
 	};
 
-	INITIAL_GIF_VALUES.forEach((value) => loadGif(value, "high"));
+	INITIAL_GIF_VALUES.forEach(preloadValue);
 
 	const remainingGifValues = GIF_VALUES.filter(
 		(value) => !INITIAL_GIF_VALUES.includes(value),
@@ -178,13 +166,13 @@ function preloadGifs() {
 	const scheduleRemaining = () => {
 		if (remainingGifValues.length === 0) return;
 		if ("requestIdleCallback" in window) {
-			window.requestIdleCallback(preloadNext, { timeout: 1800 });
+			window.requestIdleCallback(preloadNext, { timeout: 2200 });
 		} else {
-			window.setTimeout(preloadNext, 250);
+			window.setTimeout(preloadNext, 600);
 		}
 	};
 	const preloadNext = () => {
-		if (!animating) loadGif(remainingGifValues.shift(), "low");
+		if (!animating) preloadValue(remainingGifValues.shift());
 		scheduleRemaining();
 	};
 

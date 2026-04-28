@@ -36,7 +36,8 @@
 	transition: background 180ms ease-out;
 }
 
-body:not(.bg-on) .board-wrap {
+body:not(.bg-on) .board-wrap,
+.board-wrap.animating {
 	background: var(--panel);
 }
 
@@ -118,20 +119,6 @@ body:not(.bg-on) .board-wrap {
 
 .tile-moving.is-moving {
 	transform: translate(var(--move-x), var(--move-y));
-}
-
-.gif-preload {
-	position: fixed;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	opacity: 0;
-	pointer-events: none;
-}
-
-.gif-preload img {
-	width: 1px;
-	height: 1px;
 }
 
 .tile::after {
