@@ -51,10 +51,6 @@ body:not(.bg-on) .board-wrap {
 	user-select: none;
 }
 
-.game-board.animating .tile:not(.tile-new):not(.tile-merged) {
-	visibility: hidden;
-}
-
 .tile-layer {
 	position: absolute;
 	inset: 0;
@@ -82,9 +78,23 @@ body:not(.bg-on) .board-wrap {
 			oklch(21.501% 0.08675 22.79 / 0.04),
 			oklch(21.501% 0.08675 22.79 / 0.24)
 		),
-		var(--tile-gif, none) center / cover no-repeat,
 		var(--panel-muted);
 	box-shadow: inset 0 0 0 1px oklch(98% 0.006 336 / 0.34);
+}
+
+.tile-layer .tile {
+	--tile-gap: clamp(0.28rem, 1.2vw, 0.58rem);
+	inset: auto;
+}
+
+.tile-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+	user-select: none;
 }
 
 .tile-new {
@@ -100,19 +110,13 @@ body:not(.bg-on) .board-wrap {
 	animation: none;
 }
 
-.tile-clone {
-	--tile-gap: clamp(0.28rem, 1.2vw, 0.58rem);
-	inset: auto;
-	left: calc((100% / 4) * var(--from-column) + var(--tile-gap));
-	top: calc((100% / 4) * var(--from-row) + var(--tile-gap));
-	width: calc(25% - (var(--tile-gap) * 2));
-	height: calc(25% - (var(--tile-gap) * 2));
+.tile-moving {
 	animation: none;
 	transition: transform var(--move-duration, 150ms)
 		cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.tile-clone.is-moving {
+.tile-moving.is-moving {
 	transform: translate(var(--move-x), var(--move-y));
 }
 
@@ -132,6 +136,7 @@ body:not(.bg-on) .board-wrap {
 
 .tile::after {
 	position: absolute;
+	z-index: 1;
 	right: clamp(0.36rem, 1.2vw, 0.7rem);
 	bottom: clamp(0.28rem, 1vw, 0.56rem);
 	font-size: clamp(1rem, 5.4vw, 2.5rem);
@@ -195,7 +200,7 @@ body:not(.bg-on) .board-wrap {
 	.tile-new,
 	.tile-merged,
 	.scorebox .score-addition,
-	.tile-clone,
+	.tile-moving,
 	.game-message {
 		animation: none;
 		transition: none;

@@ -100,7 +100,7 @@ export const template2048: GameTemplate = {
 			label: "Move animation (ms)",
 			description: "Duration of tile slide animation in milliseconds.",
 			type: "number",
-			default: 100,
+			default: 150,
 			validation: { min: 0, max: 1000 },
 			advanced: true,
 			group: "timing",

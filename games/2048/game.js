@@ -63,6 +63,7 @@ function buildUI() {
 			<div class="game-board" id="game-board" tabindex="0" role="grid"
 				 style="grid-template-columns: repeat(${SIZE}, minmax(0, 1fr));"
 				 aria-label="2048 game board"></div>
+			<div class="tile-layer" id="tile-layer" aria-hidden="true"></div>
 			<div class="game-message" id="game-message" hidden>
 				<p id="message-title"></p>
 				<span id="message-copy"></span>
@@ -73,6 +74,7 @@ function buildUI() {
 	return {
 		boardElement: container.querySelector("#game-board"),
 		boardWrap: container.querySelector("#board-wrap"),
+		tileLayer: container.querySelector("#tile-layer"),
 		scoreElement: container.querySelector("#score"),
 		bestElement: container.querySelector("#best-score"),
 		newGameButton: container.querySelector("#new-game"),
@@ -90,6 +92,7 @@ if (!dom) throw new Error("2048: failed to build UI");
 const {
 	boardElement,
 	boardWrap,
+	tileLayer,
 	scoreElement,
 	bestElement,
 	newGameButton,
@@ -111,6 +114,7 @@ let disableTileArrival = false;
 let animationTimer = 0;
 let queuedDirection = null;
 let touchStart = null;
+const gridCells = [];
 const preloadedGifImages = [];
 
 /* ── Board helpers ────────────────────────────────────────────── */
@@ -452,46 +456,85 @@ function cellKey(row, column) {
 	return `${row}:${column}`;
 }
 
-function render({ newCells = [], mergedCells = [], scoreDelta = 0 } = {}) {
-	const newCellKeys = new Set(
-		newCells.map((cell) => cellKey(cell.row, cell.column)),
-	);
-	const mergedCellKeys = new Set(
-		mergedCells.map((cell) => cellKey(cell.row, cell.column)),
-	);
-
+function buildBoardGrid() {
 	boardElement.replaceChildren();
-
+	gridCells.length = 0;
 	for (let row = 0; row < SIZE; row += 1) {
+		const rowCells = [];
 		for (let column = 0; column < SIZE; column += 1) {
 			const cell = document.createElement("div");
 			cell.className = "cell";
-			cell.setAttribute("aria-label", tileLabel(row, column));
-
-			const value = board[row][column];
-			if (value) {
-				const tile = document.createElement("span");
-				const classes = ["tile"];
-				const key = cellKey(row, column);
-
-				if (disableTileArrival) {
-					classes.push("tile-settled");
-				} else if (mergedCellKeys.has(key)) {
-					classes.push("tile-merged");
-				} else if (newCellKeys.has(key)) {
-					classes.push("tile-new");
-				}
-
-				tile.className = classes.join(" ");
-				tile.dataset.value = String(value);
-				tile.style.setProperty("--tile-gif", tileGif(value));
-				cell.append(tile);
-			}
-
+			cell.setAttribute("role", "gridcell");
 			boardElement.append(cell);
+			rowCells.push(cell);
+		}
+		gridCells.push(rowCells);
+	}
+	tileLayer.style.setProperty("--board-size", SIZE);
+}
+
+function updateCells() {
+	for (let row = 0; row < SIZE; row += 1) {
+		for (let column = 0; column < SIZE; column += 1) {
+			gridCells[row][column].setAttribute("aria-label", tileLabel(row, column));
 		}
 	}
+}
 
+function createTileElement(value, extraClasses = []) {
+	const tile = document.createElement("span");
+	tile.className = ["tile", ...extraClasses].join(" ");
+	tile.dataset.value = String(value);
+	tile.style.setProperty("--move-duration", `${MOVE_DURATION}ms`);
+
+	const path = gifPath(value);
+	if (path) {
+		const image = document.createElement("img");
+		image.className = "tile-image";
+		image.alt = "";
+		image.decoding = "async";
+		image.draggable = false;
+		image.src = path;
+		tile.append(image);
+	}
+
+	return tile;
+}
+
+function positionTile(tile, row, column) {
+	const cellSize = 100 / SIZE;
+	tile.style.left = `calc(${column * cellSize}% + var(--tile-gap))`;
+	tile.style.top = `calc(${row * cellSize}% + var(--tile-gap))`;
+	tile.style.width = `calc(${cellSize}% - (var(--tile-gap) * 2))`;
+	tile.style.height = `calc(${cellSize}% - (var(--tile-gap) * 2))`;
+}
+
+function renderTiles(newCellKeys, mergedCellKeys) {
+	tileLayer.replaceChildren();
+
+	for (let row = 0; row < SIZE; row += 1) {
+		for (let column = 0; column < SIZE; column += 1) {
+			const value = board[row][column];
+			if (!value) continue;
+
+			const classes = [];
+			const key = cellKey(row, column);
+			if (disableTileArrival) {
+				classes.push("tile-settled");
+			} else if (mergedCellKeys.has(key)) {
+				classes.push("tile-merged");
+			} else if (newCellKeys.has(key)) {
+				classes.push("tile-new");
+			}
+
+			const tile = createTileElement(value, classes);
+			positionTile(tile, row, column);
+			tileLayer.append(tile);
+		}
+	}
+}
+
+function updateBoardChrome(scoreDelta = 0) {
 	scoreElement.textContent = String(score);
 	if (!disableTileArrival && scoreDelta > 0) {
 		const addition = document.createElement("span");
@@ -500,8 +543,23 @@ function render({ newCells = [], mergedCells = [], scoreDelta = 0 } = {}) {
 		scoreElement.append(addition);
 	}
 	bestElement.textContent = String(best);
-	updateBackground();
-	updateMessage();
+	if (!animating) {
+		updateBackground();
+		updateMessage();
+	}
+}
+
+function render({ newCells = [], mergedCells = [], scoreDelta = 0 } = {}) {
+	const newCellKeys = new Set(
+		newCells.map((cell) => cellKey(cell.row, cell.column)),
+	);
+	const mergedCellKeys = new Set(
+		mergedCells.map((cell) => cellKey(cell.row, cell.column)),
+	);
+
+	updateCells();
+	renderTiles(newCellKeys, mergedCellKeys);
+	updateBoardChrome(scoreDelta);
 }
 
 /* ── Animation ────────────────────────────────────────────────── */
@@ -514,34 +572,27 @@ function animateMove(transitions, renderOptions) {
 
 	if (reduceMotion || transitions.length === 0 || boardRect.width === 0) {
 		disableTileArrival = true;
-		render();
+		render(renderOptions);
 		disableTileArrival = false;
 		return;
 	}
 
 	clearAnimation();
 	animating = true;
-	render(renderOptions);
-	boardElement.classList.add("animating");
-
-	const layer = document.createElement("div");
-	layer.className = "tile-layer";
-	boardWrap.append(layer);
+	boardWrap.classList.add("animating");
+	updateCells();
+	updateBoardChrome(renderOptions.scoreDelta);
+	tileLayer.replaceChildren();
 
 	const cellWidth = boardRect.width / SIZE;
 	const cellHeight = boardRect.height / SIZE;
-	const clones = transitions.map((transition) => {
-		const tile = document.createElement("span");
+	const tiles = transitions.map((transition) => {
 		const isMoving =
 			transition.from.row !== transition.to.row ||
 			transition.from.column !== transition.to.column;
-		tile.className = "tile tile-clone";
-		tile.dataset.value = String(transition.value);
+		const tile = createTileElement(transition.value, ["tile-moving"]);
 		if (isMoving) tile.dataset.moving = "true";
-		tile.style.setProperty("--move-duration", `${MOVE_DURATION}ms`);
-		tile.style.setProperty("--tile-gif", tileGif(transition.value));
-		tile.style.setProperty("--from-column", transition.from.column);
-		tile.style.setProperty("--from-row", transition.from.row);
+		positionTile(tile, transition.from.row, transition.from.column);
 		tile.style.setProperty(
 			"--move-x",
 			`${(transition.to.column - transition.from.column) * cellWidth}px`,
@@ -550,12 +601,12 @@ function animateMove(transitions, renderOptions) {
 			"--move-y",
 			`${(transition.to.row - transition.from.row) * cellHeight}px`,
 		);
-		layer.append(tile);
+		tileLayer.append(tile);
 		return tile;
 	});
 
-	const movingClones = clones.filter((tile) => tile.dataset.moving === "true");
-	let remainingMoves = movingClones.length;
+	const movingTiles = tiles.filter((tile) => tile.dataset.moving === "true");
+	let remainingMoves = movingTiles.length;
 
 	const finishOnce = () => {
 		if (!animating) return;
@@ -564,11 +615,12 @@ function animateMove(transitions, renderOptions) {
 			animationTimer = 0;
 		}
 		clearAnimation();
+		render({ ...renderOptions, scoreDelta: 0 });
 		playQueuedMove();
 	};
 
-	if (movingClones.length > 0) {
-		for (const tile of movingClones) {
+	if (movingTiles.length > 0) {
+		for (const tile of movingTiles) {
 			tile.addEventListener(
 				"transitionend",
 				(event) => {
@@ -582,7 +634,7 @@ function animateMove(transitions, renderOptions) {
 	}
 
 	requestAnimationFrame(() => {
-		for (const tile of clones) tile.classList.add("is-moving");
+		for (const tile of tiles) tile.classList.add("is-moving");
 	});
 
 	animationTimer = window.setTimeout(finishOnce, MOVE_DURATION + 80);
@@ -597,9 +649,9 @@ function playQueuedMove() {
 function finishAnimation() {
 	if (!animating) return;
 	disableTileArrival = true;
+	clearAnimation();
 	render();
 	disableTileArrival = false;
-	clearAnimation();
 	playQueuedMove();
 }
 
@@ -608,8 +660,8 @@ function clearAnimation() {
 		window.clearTimeout(animationTimer);
 		animationTimer = 0;
 	}
-	for (const layer of boardWrap.querySelectorAll(".tile-layer")) layer.remove();
-	boardElement.classList.remove("animating");
+	tileLayer.replaceChildren();
+	boardWrap.classList.remove("animating");
 	animating = false;
 }
 
@@ -701,6 +753,7 @@ boardElement.addEventListener("touchstart", handleTouchStart, {
 });
 boardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
 
+buildBoardGrid();
 setBackgroundEnabled(
 	localStorage.getItem(BG_KEY) !== null
 		? localStorage.getItem(BG_KEY) !== "0"
