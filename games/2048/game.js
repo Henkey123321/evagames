@@ -26,6 +26,7 @@ const FOUR_CHANCE = CFG.four_spawn_chance;
 
 const GIF_VALUES = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 const VALUES_WITH_GIFS = new Set(GIF_VALUES);
+const TILE_ASSET_MAP = resolveTileAssets();
 const STORAGE_KEY = "eva-2048-state";
 const BEST_KEY = "eva-2048-best";
 const BG_KEY = "eva-2048-bg";
@@ -120,8 +121,21 @@ function cloneBoard(source) {
 	return source.map((row) => [...row]);
 }
 
+function resolveTileAssets() {
+	const map = new Map();
+	if (!Array.isArray(CFG.assets)) return map;
+	for (const asset of CFG.assets) {
+		if (asset.slot !== "tile_gif" || !asset.file) continue;
+		const match = String(asset.file).match(/^(\d+)\.[a-z0-9]+$/i);
+		if (match) map.set(Number(match[1]), asset.file);
+	}
+	return map;
+}
+
 function gifPath(value) {
 	const cappedValue = Math.min(value, WIN_VALUE);
+	const uploaded = TILE_ASSET_MAP.get(cappedValue);
+	if (uploaded) return `assets/${uploaded}`;
 	return VALUES_WITH_GIFS.has(cappedValue) ? `assets/${cappedValue}.gif` : "";
 }
 
@@ -234,7 +248,7 @@ function addRandomTile() {
 	if (emptyCells.length === 0) return null;
 	const [row, column] =
 		emptyCells[Math.floor(Math.random() * emptyCells.length)];
-	const value = Math.random() < (1 - FOUR_CHANCE) ? 2 : 4;
+	const value = Math.random() < 1 - FOUR_CHANCE ? 2 : 4;
 	board[row][column] = value;
 	return { row, column, value };
 }

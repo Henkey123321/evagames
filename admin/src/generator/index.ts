@@ -4,84 +4,120 @@
  */
 
 import type {
-  GameRow, GameSettingRow, GameAssetRow, SiteConfigRow,
-  DesignTokenRow, FooterLinkRow, BodyArtRow,
+	BodyArtRow,
+	DesignTokenRow,
+	FooterLinkRow,
+	GameAssetRow,
+	GameRow,
+	GameSettingRow,
+	SiteConfigRow,
 } from "../types.js";
 import { gameTemplates } from "./registry.js";
 
 export interface GenerateResult {
-  files: Map<string, string>;
-  hash: string;
+	files: Map<string, string>;
+	hash: string;
 }
 
 export async function generateSite(db: D1Database): Promise<GenerateResult> {
-  // ── Load all content ──
-  const [configRows, gamesRows, tokensRows, linksRows, artRows] = await Promise.all([
-    db.prepare("SELECT * FROM site_config").all<SiteConfigRow>(),
-    db.prepare("SELECT * FROM games ORDER BY sort_order").all<GameRow>(),
-    db.prepare("SELECT * FROM design_tokens ORDER BY category, id").all<DesignTokenRow>(),
-    db.prepare("SELECT * FROM footer_links ORDER BY group_name, sort_order").all<FooterLinkRow>(),
-    db.prepare("SELECT * FROM body_art").all<BodyArtRow>(),
-  ]);
+	// ── Load all content ──
+	const [configRows, gamesRows, tokensRows, linksRows, artRows] =
+		await Promise.all([
+			db.prepare("SELECT * FROM site_config").all<SiteConfigRow>(),
+			db.prepare("SELECT * FROM games ORDER BY sort_order").all<GameRow>(),
+			db
+				.prepare("SELECT * FROM design_tokens ORDER BY category, id")
+				.all<DesignTokenRow>(),
+			db
+				.prepare("SELECT * FROM footer_links ORDER BY group_name, sort_order")
+				.all<FooterLinkRow>(),
+			db.prepare("SELECT * FROM body_art").all<BodyArtRow>(),
+		]);
 
-  const config: Record<string, string> = {};
-  for (const row of configRows.results) config[row.key] = row.value;
+	const config: Record<string, string> = {};
+	for (const row of configRows.results) config[row.key] = row.value;
 
-  const games = gamesRows.results;
-  const tokens = tokensRows.results;
-  const storeLinks = linksRows.results.filter((l) => l.group_name === "store");
-  const socialLinks = linksRows.results.filter((l) => l.group_name === "social");
-  const bodyArt = artRows.results;
-  const files = new Map<string, string>();
+	const games = gamesRows.results;
+	const tokens = tokensRows.results;
+	const storeLinks = linksRows.results.filter((l) => l.group_name === "store");
+	const socialLinks = linksRows.results.filter(
+		(l) => l.group_name === "social",
+	);
+	const bodyArt = artRows.results;
+	const files = new Map<string, string>();
 
-  // Load settings and assets for each game
-  const gameData: Map<number, { settings: Record<string, unknown>; assets: GameAssetRow[] }> = new Map();
-  for (const game of games) {
-    const [settingsRes, assetsRes] = await Promise.all([
-      db.prepare("SELECT * FROM game_settings WHERE game_id = ?").bind(game.id).all<GameSettingRow>(),
-      db.prepare("SELECT * FROM game_assets WHERE game_id = ? ORDER BY sort_order").bind(game.id).all<GameAssetRow>(),
-    ]);
-    const settings: Record<string, unknown> = {};
-    for (const s of settingsRes.results) {
-      try { settings[s.setting_key] = JSON.parse(s.setting_value); } catch { settings[s.setting_key] = s.setting_value; }
-    }
-    gameData.set(game.id, { settings, assets: assetsRes.results });
-  }
+	// Load settings and assets for each game
+	const gameData: Map<
+		number,
+		{ settings: Record<string, unknown>; assets: GameAssetRow[] }
+	> = new Map();
+	for (const game of games) {
+		const [settingsRes, assetsRes] = await Promise.all([
+			db
+				.prepare("SELECT * FROM game_settings WHERE game_id = ?")
+				.bind(game.id)
+				.all<GameSettingRow>(),
+			db
+				.prepare(
+					"SELECT * FROM game_assets WHERE game_id = ? ORDER BY sort_order",
+				)
+				.bind(game.id)
+				.all<GameAssetRow>(),
+		]);
+		const settings: Record<string, unknown> = {};
+		for (const s of settingsRes.results) {
+			try {
+				settings[s.setting_key] = JSON.parse(s.setting_value);
+			} catch {
+				settings[s.setting_key] = s.setting_value;
+			}
+		}
+		gameData.set(game.id, { settings, assets: assetsRes.results });
+	}
 
-  // ── Generate tokens.css ──
-  files.set("css/tokens.css", generateTokensCss(tokens));
+	// ── Generate tokens.css ──
+	files.set("css/tokens.css", generateTokensCss(tokens));
 
-  // ── Generate footer.js ──
-  files.set("footer.js", generateFooterJs(storeLinks, socialLinks));
+	// ── Generate footer.js ──
+	files.set("footer.js", generateFooterJs(storeLinks, socialLinks));
 
-  // ── Generate homepage ──
-  const homeArt = {
-    left: bodyArt.find((a) => a.page_ref === "home" && a.position === "left"),
-    right: bodyArt.find((a) => a.page_ref === "home" && a.position === "right"),
-  };
-  files.set("index.html", generateHomepage(config, games, homeArt));
+	// ── Generate homepage ──
+	const homeArt = {
+		left: bodyArt.find((a) => a.page_ref === "home" && a.position === "left"),
+		right: bodyArt.find((a) => a.page_ref === "home" && a.position === "right"),
+	};
+	files.set("index.html", generateHomepage(config, games, homeArt));
 
-  // ── Generate each game page ──
-  for (const game of games) {
-    if (game.status !== "available") continue;
-    const data = gameData.get(game.id)!;
-    const gameArt = {
-      left: bodyArt.find((a) => a.page_ref === game.slug && a.position === "left"),
-      right: bodyArt.find((a) => a.page_ref === game.slug && a.position === "right"),
-    };
-    files.set(`games/${game.slug}/index.html`, generateGamePage(config, game, data.settings, data.assets, gameArt));
-  }
+	// ── Generate each game page ──
+	for (const game of games) {
+		if (game.status !== "available") continue;
+		const data = gameData.get(game.id)!;
+		const gameArt = {
+			left: bodyArt.find(
+				(a) => a.page_ref === game.slug && a.position === "left",
+			),
+			right: bodyArt.find(
+				(a) => a.page_ref === game.slug && a.position === "right",
+			),
+		};
+		files.set(
+			`games/${game.slug}/index.html`,
+			generateGamePage(config, game, data.settings, data.assets, gameArt),
+		);
+	}
 
-  // Compute a simple hash for change tracking
-  const hash = await computeHash(JSON.stringify({ config, games, tokens, storeLinks, socialLinks, bodyArt }));
+	// Compute a simple hash for change tracking
+	const hash = await computeHash(
+		JSON.stringify({ config, games, tokens, storeLinks, socialLinks, bodyArt }),
+	);
 
-  return { files, hash };
+	return { files, hash };
 }
 
 // ── Template generators ──
 
 function generateTokensCss(tokens: DesignTokenRow[]): string {
-  const fontFace = `@font-face {
+	const fontFace = `@font-face {
 \tfont-family: "Advantage";
 \tsrc: url("../fonts/Advantage-Regular.woff2") format("woff2");
 \tfont-weight: 400;
@@ -89,49 +125,68 @@ function generateTokensCss(tokens: DesignTokenRow[]): string {
 \tfont-display: swap;
 }\n`;
 
-  const vars = tokens.map((t) => `\t--${t.token_name}: ${t.token_value};`).join("\n");
-  const fontUi = `\t--font-ui:\n\t\tAvenir Next, Avenir, Montserrat, Corbel, Trebuchet MS, Segoe UI, system-ui,\n\t\tsans-serif;`;
+	const vars = tokens
+		.map((t) => `\t--${t.token_name}: ${t.token_value};`)
+		.join("\n");
+	const fontUi = `\t--font-ui:\n\t\tAvenir Next, Avenir, Montserrat, Corbel, Trebuchet MS, Segoe UI, system-ui,\n\t\tsans-serif;`;
 
-  return `/*\n  Design tokens for Eva Games.\n  Generated by Goddess's Dashboard.\n*/\n\n${fontFace}\n:root {\n\tcolor-scheme: light;\n\n${vars}\n\n\t/* Typography */\n${fontUi}\n}\n`;
+	return `/*\n  Design tokens for Eva Games.\n  Generated by Goddess's Dashboard.\n*/\n\n${fontFace}\n:root {\n\tcolor-scheme: light;\n\n${vars}\n\n\t/* Typography */\n${fontUi}\n}\n`;
 }
 
-function generateFooterJs(storeLinks: FooterLinkRow[], socialLinks: FooterLinkRow[]): string {
-  const formatLinks = (links: FooterLinkRow[]) =>
-    links.map((l) => `\t{\n\t\tlabel: ${JSON.stringify(l.label)},\n\t\thref: ${JSON.stringify(l.url)},\n\t\ticon: ${JSON.stringify(l.icon_filename)},\n\t\textraClass: ${JSON.stringify(l.extra_css_class || "")},\n\t}`).join(",\n");
+function generateFooterJs(
+	storeLinks: FooterLinkRow[],
+	socialLinks: FooterLinkRow[],
+): string {
+	const formatLinks = (links: FooterLinkRow[]) =>
+		links
+			.map(
+				(l) =>
+					`\t{\n\t\tlabel: ${JSON.stringify(l.label)},\n\t\thref: ${JSON.stringify(l.url)},\n\t\ticon: ${JSON.stringify(l.icon_filename)},\n\t\textraClass: ${JSON.stringify(l.extra_css_class || "")},\n\t}`,
+			)
+			.join(",\n");
 
-  return `const footerStoreLinks = [\n${formatLinks(storeLinks)},\n];\n\nconst footerSocialLinks = [\n${formatLinks(socialLinks)},\n];\n\n` +
-    FOOTER_COMPONENT_CODE;
+	return (
+		`const footerStoreLinks = [\n${formatLinks(storeLinks)},\n];\n\nconst footerSocialLinks = [\n${formatLinks(socialLinks)},\n];\n\n` +
+		FOOTER_COMPONENT_CODE
+	);
 }
 
 function generateHomepage(
-  config: Record<string, string>,
-  games: GameRow[],
-  art: { left?: BodyArtRow; right?: BodyArtRow },
+	config: Record<string, string>,
+	games: GameRow[],
+	art: { left?: BodyArtRow; right?: BodyArtRow },
 ): string {
-  const title = config.site_title || "Eva Games | Eva de Vil";
-  const desc = config.meta_description || "";
-  const canonical = config.canonical_url || "https://evagames.org/";
-  const brandText = config.brand_text || "Eva Games";
-  const brandLink = config.brand_link || "https://evagames.org/";
-  const themeColor = config.theme_color || "#FFE0F6";
+	const title = config.site_title || "Eva Games | Eva de Vil";
+	const desc = config.meta_description || "";
+	const canonical = config.canonical_url || "https://evagames.org/";
+	const brandText = config.brand_text || "Eva Games";
+	const brandLink = config.brand_link || "https://evagames.org/";
+	const themeColor = config.theme_color || "#FFE0F6";
 
-  const gameTiles = games.map((g) => {
-    const cssClass = ["game-tile"];
-    if (g.status === "available") cssClass.push("game-tile-available");
-    if (g.tile_css_class) cssClass.push(g.tile_css_class);
-    if (g.status !== "available") cssClass.push("empty");
+	const gameTiles = games
+		.map((g) => {
+			const cssClass = ["game-tile"];
+			if (g.status === "available") cssClass.push("game-tile-available");
+			if (g.tile_css_class) cssClass.push(g.tile_css_class);
+			if (g.status !== "available") cssClass.push("empty");
 
-    const inner = g.status === "available"
-      ? `<span class="tile-number">${esc(g.tile_number)}</span>\n              <h2><a class="game-card-link" href="games/${esc(g.slug)}/">${esc(g.title)}</a></h2>\n              <span class="status">${esc(g.status_label)}</span>`
-      : `<span class="tile-number">${esc(g.tile_number)}</span>\n              <h2>${esc(g.title)}</h2>\n              <span class="status">${esc(g.status_label)}</span>`;
+			const inner =
+				g.status === "available"
+					? `<span class="tile-number">${esc(g.tile_number)}</span>\n              <h2><a class="game-card-link" href="games/${esc(g.slug)}/">${esc(g.title)}</a></h2>\n              <span class="status">${esc(g.status_label)}</span>`
+					: `<span class="tile-number">${esc(g.tile_number)}</span>\n              <h2>${esc(g.title)}</h2>\n              <span class="status">${esc(g.status_label)}</span>`;
 
-    return `            <article class="${cssClass.join(" ")}">\n              ${inner}\n            </article>`;
-  }).join("\n\n");
+			return `            <article class="${cssClass.join(" ")}">\n              ${inner}\n            </article>`;
+		})
+		.join("\n\n");
 
-  const leftArt = art.left ? `assets/${art.left.image_filename}` : "assets/body-left.png";
-  const rightArt = art.right ? `assets/${art.right.image_filename}` : "assets/body-right.png";
+	const leftArt = art.left
+		? `assets/${art.left.image_filename}`
+		: "assets/body-left.png";
+	const rightArt = art.right
+		? `assets/${art.right.image_filename}`
+		: "assets/body-right.png";
 
-  return `<!doctype html>
+	return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -185,25 +240,39 @@ ${gameTiles}
 }
 
 function generateGamePage(
-  config: Record<string, string>,
-  game: GameRow,
-  settings: Record<string, unknown>,
-  assets: GameAssetRow[],
-  art: { left?: BodyArtRow; right?: BodyArtRow },
+	config: Record<string, string>,
+	game: GameRow,
+	settings: Record<string, unknown>,
+	assets: GameAssetRow[],
+	art: { left?: BodyArtRow; right?: BodyArtRow },
 ): string {
-  const template = gameTemplates[game.template_id];
-  if (!template) return `<!-- Unknown template: ${game.template_id} -->`;
+	const template = gameTemplates[game.template_id];
+	if (!template) return `<!-- Unknown template: ${game.template_id} -->`;
 
-  const title = `${game.title} | ${config.site_title || "Eva Games"}`;
-  const themeColor = config.theme_color || "#FFE0F6";
+	const title = `${game.title} | ${config.site_title || "Eva Games"}`;
+	const themeColor = config.theme_color || "#FFE0F6";
 
-  // Serialize game config for the JS to consume
-  const gameConfig = JSON.stringify({ ...settings, assets: assets.map((a) => ({ slot: a.slot_key, file: a.filename, order: a.sort_order })) });
+	// Serialize game config for the JS to consume
+	const gameConfig = JSON.stringify({
+		...settings,
+		assets: assets.map((a) => ({
+			slot: a.slot_key,
+			file: a.filename,
+			originalName: a.original_name,
+			mimeType: a.mime_type,
+			order: a.sort_order,
+		})),
+	});
 
-  const leftArt = art.left ? `assets/${art.left.image_filename}` : "assets/body-left.png";
-  const rightArt = art.right ? `assets/${art.right.image_filename}` : "assets/body-right.png";
+	const templateAssetBase = `../${esc(game.template_id)}`;
+	const leftArt = art.left
+		? `assets/${art.left.image_filename}`
+		: `${templateAssetBase}/assets/body-left.png`;
+	const rightArt = art.right
+		? `assets/${art.right.image_filename}`
+		: `${templateAssetBase}/assets/body-right.png`;
 
-  return `<!doctype html>
+	return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -222,10 +291,10 @@ function generateGamePage(
     <link rel="stylesheet" href="../../css/base.css" />
     <link rel="stylesheet" href="../../css/footer.css" />
     <link rel="stylesheet" href="../../css/game.css" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="${templateAssetBase}/styles.css" />
     <script>window.__GAME_CONFIG__ = ${gameConfig};</script>
     <script src="../../footer.js" defer></script>
-    <script src="game.js" defer></script>
+    <script src="${templateAssetBase}/game.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#game-board">Skip to game</a>
@@ -259,14 +328,19 @@ function generateGamePage(
 // ── Helpers ──
 
 function esc(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
 }
 
-
 async function computeHash(data: string): Promise<string> {
-  const encoded = new TextEncoder().encode(data);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+	const encoded = new TextEncoder().encode(data);
+	const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+	return Array.from(new Uint8Array(hashBuffer))
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
 }
 
 // The footer web component code (copied as-is for the generated site)
