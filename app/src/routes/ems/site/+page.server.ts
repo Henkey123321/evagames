@@ -52,7 +52,12 @@ const gameForm = z.object({
 	hubState: z.enum(HUB_STATES),
 	visibility: z.enum(VISIBILITIES),
 	hubLabel: z.string().trim().min(1).max(24),
-	hubOrder: z.coerce.number().int().min(0).max(999)
+	hubOrder: z.coerce.number().int().min(0).max(999),
+	pointsOnComplete: z.coerce.number().int().min(0).max(100_000),
+	leaderboardEnabled: z
+		.string()
+		.optional()
+		.transform((v) => v === 'on')
 });
 
 const linkForm = z.object({

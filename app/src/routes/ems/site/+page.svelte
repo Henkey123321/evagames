@@ -80,6 +80,22 @@
 							<span class="ems-label">Button text</span>
 							<input class="ems-input" name="hubLabel" maxlength="24" value={game.hubLabel} />
 						</label>
+						<label class="ems-field">
+							<span class="ems-label">Points</span>
+							<input
+								class="ems-input order"
+								type="number"
+								name="pointsOnComplete"
+								min="0"
+								max="100000"
+								value={game.pointsOnComplete}
+								title="Points for the first time a fan completes it"
+							/>
+						</label>
+						<label class="ems-check ems-small board">
+							<input type="checkbox" name="leaderboardEnabled" checked={game.leaderboardEnabled} />
+							Leaderboard
+						</label>
 						<div class="save">
 							<button class="ems-btn ems-btn-small" type="submit">Save</button>
 							{#if flash('games')?.saved && form && 'id' in form && form.id === game.id}<span
@@ -242,10 +258,9 @@
 	.game-row,
 	.link-row {
 		display: grid;
-		grid-template-columns: minmax(8rem, 1.4fr) 5rem minmax(8rem, 1fr) minmax(9rem, 1.1fr) minmax(
-				7rem,
-				1fr
-			) auto;
+		grid-template-columns:
+			minmax(7rem, 1.2fr) 4.5rem minmax(8rem, 1fr) minmax(9rem, 1.1fr) minmax(6rem, 0.8fr)
+			4.5rem auto auto;
 		align-items: end;
 		gap: 0.6rem 0.85rem;
 		padding: 0.8rem 1rem;
@@ -261,6 +276,10 @@
 
 	.order {
 		width: 5rem;
+	}
+
+	.board {
+		padding-bottom: 0.45rem;
 	}
 
 	.save {

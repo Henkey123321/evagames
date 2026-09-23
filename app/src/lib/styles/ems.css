@@ -26,7 +26,8 @@
 	font-variant-numeric: tabular-nums;
 }
 
-.ems a {
+/* :where() keeps this at class-level specificity so button-links keep their own colours. */
+.ems :where(a) {
 	color: inherit;
 }
 

@@ -64,6 +64,16 @@ export function describeActivity(kind: string, data: Record<string, unknown>): s
 			return 'sent you a message';
 		case 'profile_updated':
 			return 'updated their profile';
+		case 'reward_unlocked':
+			return data.pending
+				? `earned ${data.rewardName ?? 'a reward'} (waiting for your approval)`
+				: `unlocked ${data.rewardName ?? 'a reward'}`;
+		case 'badge_earned':
+			return `earned the ${data.badgeName ?? ''} badge`.replace('  ', ' ');
+		case 'proof_submitted':
+			return `sent proof for ${data.rewardName ?? 'a task'}`;
+		case 'points_granted':
+			return `received ${data.delta ?? ''} points`.replace('  ', ' ');
 		default:
 			return kind.replace(/_/g, ' ');
 	}

@@ -4,7 +4,16 @@ import { activity, auditLog, users } from './db/schema';
 
 /** Fan activity kinds shown in the EMS feed. */
 export type ActivityKind =
-	'signed_up' | 'played' | 'completed' | 'profile_updated' | 'handle_added' | 'messaged';
+	| 'signed_up'
+	| 'played'
+	| 'completed'
+	| 'profile_updated'
+	| 'handle_added'
+	| 'messaged'
+	| 'reward_unlocked'
+	| 'badge_earned'
+	| 'proof_submitted'
+	| 'points_granted';
 
 /** Records fan activity and bumps them to the top of the EMS "newest" ordering. */
 export async function logActivity(

@@ -44,6 +44,7 @@ export const manifest2048: GameManifest<Config2048, Result2048> = {
 	],
 	score: (r) => r.score,
 	scoreOrder: 'desc',
+	rankCompletedOnly: false,
 	isComplete: (config, r) => r.highestTile >= config.winValue,
 	verify(config, r, { durationMs }) {
 		if (r.highestTile !== 0 && !isPowerOfTwo(r.highestTile)) {

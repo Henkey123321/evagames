@@ -75,6 +75,12 @@ export const manifestMemory: GameManifest<ConfigMemory, ResultMemory> = {
 	// Fewer moves is better; time breaks ties (moves × 10000 + seconds keeps ordering in one number).
 	score: (r) => r.moves * 10000 + Math.min(r.timeSeconds, 9999),
 	scoreOrder: 'asc',
+	rankCompletedOnly: true,
+	formatScore: (score) => {
+		const moves = Math.floor(score / 10000);
+		const seconds = score % 10000;
+		return `${moves} ${moves === 1 ? 'move' : 'moves'}, ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+	},
 	isComplete: (config, r) => r.cleared && r.pairs === config.pairs,
 	verify(config, r, { durationMs }) {
 		if (r.pairs !== config.pairs)

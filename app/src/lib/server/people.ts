@@ -299,6 +299,7 @@ export async function getPerson(db: Db, staffId: string, userId: string) {
 			loyalfansHandle: user.loyalfansHandle,
 			loyalfansVerifiedAt: user.loyalfansVerifiedAt,
 			leaderboardOptIn: user.leaderboardOptIn,
+			points: user.points,
 			disabledAt: user.disabledAt,
 			lastSeenAt: user.lastSeenAt,
 			lastActivityAt: user.lastActivityAt,

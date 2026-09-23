@@ -3,6 +3,22 @@ import { z } from 'zod';
 import { audit } from '$lib/server/activity';
 import { can } from '$lib/server/auth';
 import { requireStaff } from '$lib/server/guards';
+import {
+	awardBadge,
+	awardPoints,
+	evaluateProgress,
+	grantReward,
+	pointsHistory
+} from '$lib/server/rewards';
+import {
+	badgesFor,
+	listBadges,
+	listRewards,
+	resolveUserReward,
+	rewardsForPerson
+} from '$lib/server/rewards-admin';
+import { logActivity } from '$lib/server/activity';
+import { notifyUser } from '$lib/server/push';
 import { getManifest } from '$lib/games/registry';
 import { duration } from '$lib/format';
 import { MESSAGE_MAX, getThread, markReadByStaff, sendStaffMessage } from '$lib/server/messages';
@@ -35,9 +51,25 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 	if (!person) error(404, 'Person not found');
 
 	const canMessage = can(me, 'messages');
-	const [lists, thread] = await Promise.all([
+	const canReward = can(me, 'rewards');
+	const [lists, thread, rewardData] = await Promise.all([
 		getLists(locals.db),
-		canMessage ? getThread(locals.db, params.id) : null
+		canMessage ? getThread(locals.db, params.id) : null,
+		canReward
+			? Promise.all([
+					rewardsForPerson(locals.db, params.id),
+					badgesFor(locals.db, params.id),
+					pointsHistory(locals.db, params.id, 8),
+					listRewards(locals.db),
+					listBadges(locals.db)
+				]).then(([granted, earned, history, library, allBadges]) => ({
+					granted,
+					earned,
+					history,
+					library: library.map((r) => ({ id: r.id, name: r.name })),
+					badges: allBadges.map((b) => ({ id: b.id, name: b.name, mark: b.mark }))
+				}))
+			: null
 	]);
 	const justRead = canMessage && !!thread?.conversation?.unreadForStaff;
 	if (justRead) await markReadByStaff(locals.db, params.id);
@@ -64,6 +96,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		person: { ...person, plays },
 		lists,
 		canMessage,
+		rewards: rewardData,
 		justRead,
 		thread: thread?.messages.slice(-12) ?? null
 	};
@@ -146,6 +179,82 @@ export const actions: Actions = {
 		if (!code) error(404, 'Person not found');
 		await audit(locals.db, me.id, 'reset_code_issued', 'user', params.id);
 		return { resetCode: code };
+	},
+
+	points: async ({ request, locals, url, params }) => {
+		const me = requireStaff(locals, url, 'rewards');
+		await requireFan(locals.db, params.id);
+		const parsed = z
+			.object({
+				delta: z.coerce
+					.number()
+					.int()
+					.min(-100_000)
+					.max(100_000)
+					.refine((n) => n !== 0, 'Enter a number other than 0'),
+				note: z.string().trim().max(200).optional()
+			})
+			.safeParse(Object.fromEntries(await request.formData()));
+		if (!parsed.success) return fail(400, { rewardError: parsed.error.issues[0].message });
+		const { delta, note } = parsed.data;
+		await awardPoints(locals.db, {
+			userId: params.id,
+			delta,
+			reason: 'manual',
+			note,
+			createdBy: me.id
+		});
+		await logActivity(locals.db, params.id, 'points_granted', { delta });
+		const outcome = delta > 0 ? await evaluateProgress(locals.db, params.id) : null;
+		await audit(locals.db, me.id, 'points_granted', 'user', params.id, { delta, note });
+		return {
+			rewardDone: `Points updated${outcome?.rewards.length ? `, and that unlocked ${outcome.rewards.map((r) => r.name).join(', ')}` : ''}.`
+		};
+	},
+
+	giveBadge: async ({ request, locals, url, params }) => {
+		const me = requireStaff(locals, url, 'rewards');
+		await requireFan(locals.db, params.id);
+		const badgeId = String((await request.formData()).get('badgeId'));
+		const badge = await awardBadge(locals.db, params.id, badgeId, me.id);
+		if (!badge) return fail(400, { rewardError: 'They already have that badge' });
+		await evaluateProgress(locals.db, params.id);
+		await audit(locals.db, me.id, 'badge_given', 'user', params.id, { badge: badge.name });
+		return { rewardDone: `Gave the ${badge.name} badge.` };
+	},
+
+	giveReward: async ({ request, locals, url, params, platform }) => {
+		const me = requireStaff(locals, url, 'rewards');
+		await requireFan(locals.db, params.id);
+		const rewardId = String((await request.formData()).get('rewardId'));
+		const granted = await grantReward(locals.db, {
+			userId: params.id,
+			rewardId,
+			source: `manual:${crypto.randomUUID()}`,
+			grantedBy: me.id,
+			skipApproval: true
+		});
+		if (!granted) return fail(400, { rewardError: 'That reward no longer exists' });
+		platform!.ctx.waitUntil(
+			notifyUser(locals.db, platform!.env, params.id, {
+				title: 'Eva Games',
+				body: `Eva gave you "${granted.name}".`,
+				url: '/vault',
+				tag: 'vault'
+			}).catch(() => undefined)
+		);
+		await audit(locals.db, me.id, 'reward_given', 'user', params.id, { reward: granted.name });
+		return { rewardDone: `Gave "${granted.name}".` };
+	},
+
+	markDone: async ({ request, locals, url, params }) => {
+		const me = requireStaff(locals, url, 'rewards');
+		await requireFan(locals.db, params.id);
+		const id = String((await request.formData()).get('userRewardId'));
+		const done = await resolveUserReward(locals.db, id, 'mark_done', me.id);
+		if (!done || done.userId !== params.id)
+			return fail(400, { rewardError: 'That was already handled' });
+		return { rewardDone: `Marked "${done.rewardName}" as done.` };
 	},
 
 	disable: async ({ request, locals, url, params }) => {

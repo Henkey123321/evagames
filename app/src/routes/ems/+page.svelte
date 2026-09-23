@@ -7,7 +7,9 @@
 	const hour = new Date().getHours();
 	const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 	const queueSize = $derived(
-		(data.queue?.unread.length ?? 0) + (data.queue?.unverified.length ?? 0)
+		(data.queue?.unread.length ?? 0) +
+			(data.queue?.unverified.length ?? 0) +
+			(data.queue?.rewards.length ?? 0)
 	);
 </script>
 
@@ -43,6 +45,24 @@
 									{item.displayName} messaged you{item.unread > 1 ? ` (${item.unread})` : ''}
 								</span>
 								<span class="ems-row-sub">{item.preview}</span>
+							</span>
+							<span class="ems-row-meta">{ago(item.at)}</span>
+						</a>
+					</li>
+				{/each}
+				{#each data.queue.rewards as item (item.id)}
+					<li>
+						<a class="ems-row" href="/ems/rewards">
+							<span class="ems-dot" aria-hidden="true"></span>
+							<span class="ems-row-main">
+								<span class="ems-row-title">
+									{item.status === 'awaiting_fulfilment'
+										? `Send ${item.displayName} "${item.rewardName}"`
+										: item.status === 'submitted'
+											? `Check ${item.displayName}'s proof for "${item.rewardName}"`
+											: `Approve "${item.rewardName}" for ${item.displayName}`}
+								</span>
+								<span class="ems-row-sub">Rewards</span>
 							</span>
 							<span class="ems-row-meta">{ago(item.at)}</span>
 						</a>

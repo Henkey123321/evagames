@@ -11,6 +11,15 @@
 	const memberOf = $derived(new Set(p.lists.map((l) => l.id)));
 	let confirmDisable = $state(false);
 
+	const REWARD_STATUS: Record<string, string> = {
+		pending_approval: 'Waiting for your approval',
+		unlocked: 'Unlocked',
+		awaiting_fulfilment: 'For you to send',
+		submitted: 'Proof sent, to review',
+		done: 'Done',
+		declined: 'Declined'
+	};
+
 	const handles = $derived([
 		{
 			platform: 'onlyfans',
@@ -256,6 +265,111 @@
 				</section>
 			{/if}
 
+			{#if data.rewards}
+				{@const rw = data.rewards}
+				<section class="ems-section" aria-labelledby="earned">
+					<div class="ems-section-head">
+						<h2 id="earned">Points, badges and rewards</h2>
+						<span class="points">{u.points} points</span>
+					</div>
+					{#if form && 'rewardError' in form}<p class="ems-flash ems-flash-error" role="alert">
+							{form.rewardError}
+						</p>{/if}
+					{#if form && 'rewardDone' in form}<p class="ems-flash" role="status">
+							{form.rewardDone}
+						</p>{/if}
+
+					<div class="ems-panel ems-panel-pad ems-form">
+						<form class="ems-toolbar" method="POST" action="?/points" use:enhance>
+							<input
+								class="ems-input pts"
+								type="number"
+								name="delta"
+								placeholder="+50 or -10"
+								aria-label="Points to add or remove"
+								required
+							/>
+							<input
+								class="ems-input"
+								name="note"
+								maxlength="200"
+								placeholder="Why (optional)"
+								aria-label="Reason"
+							/>
+							<button class="ems-btn ems-btn-small" type="submit">Give points</button>
+						</form>
+						{#if rw.badges.length}
+							<form class="ems-toolbar" method="POST" action="?/giveBadge" use:enhance>
+								<select class="ems-select" name="badgeId" aria-label="Badge">
+									{#each rw.badges as b (b.id)}<option value={b.id}>{b.mark} {b.name}</option
+										>{/each}
+								</select>
+								<button class="ems-btn ems-btn-small" type="submit">Give badge</button>
+							</form>
+						{/if}
+						{#if rw.library.length}
+							<form class="ems-toolbar" method="POST" action="?/giveReward" use:enhance>
+								<select class="ems-select" name="rewardId" aria-label="Reward">
+									{#each rw.library as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
+								</select>
+								<button class="ems-btn ems-btn-small" type="submit">Give reward</button>
+							</form>
+						{:else}
+							<p class="ems-small ems-muted">
+								Create rewards on the <a href="/ems/rewards">Rewards</a> page to give them here.
+							</p>
+						{/if}
+					</div>
+
+					{#if rw.earned.length}
+						<div class="ems-chips">
+							{#each rw.earned as b (b.id)}<span class="ems-chip" title={b.description}
+									>{b.mark} {b.name}</span
+								>{/each}
+						</div>
+					{/if}
+
+					{#if rw.granted.length}
+						<ul class="ems-rows">
+							{#each rw.granted as g (g.id)}
+								<li class="ems-row play-row">
+									<span class="ems-row-main">
+										<span class="ems-row-title">{g.name}</span>
+										<span class="ems-row-sub"
+											>{REWARD_STATUS[g.status] ?? g.status}, {ago(g.createdAt)}</span
+										>
+									</span>
+									{#if g.status === 'unlocked' && g.kind === 'task'}
+										<form method="POST" action="?/markDone" use:enhance>
+											<input type="hidden" name="userRewardId" value={g.id} />
+											<button class="ems-btn ems-btn-small" type="submit">Mark task done</button>
+										</form>
+									{:else if ['pending_approval', 'submitted', 'awaiting_fulfilment'].includes(g.status)}
+										<a class="ems-btn ems-btn-small" href="/ems/rewards">Open queue</a>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					{/if}
+
+					{#if rw.history.length}
+						<details class="ems-small">
+							<summary>Points history</summary>
+							<ul class="ems-rows history">
+								{#each rw.history as h (h.id)}
+									<li class="ems-row play-row">
+										<span class="ems-row-sub feed"
+											>{h.delta > 0 ? '+' : ''}{h.delta}{h.note ? `: ${h.note}` : ''}</span
+										>
+										<span class="ems-row-meta">{ago(h.createdAt)}</span>
+									</li>
+								{/each}
+							</ul>
+						</details>
+					{/if}
+				</section>
+			{/if}
+
 			<section class="ems-section" aria-labelledby="games">
 				<div class="ems-section-head">
 					<h2 id="games">Games</h2>
@@ -341,6 +455,19 @@
 
 	.ems-chips form {
 		margin: 0;
+	}
+
+	.points {
+		font-weight: 850;
+		color: var(--ems-accent);
+	}
+
+	.pts {
+		max-width: 9rem;
+	}
+
+	.history {
+		margin-top: 0.5rem;
 	}
 
 	.note {

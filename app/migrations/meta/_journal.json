@@ -22,6 +22,13 @@
       "when": 1790179749058,
       "tag": "0002_ems",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790181817267,
+      "tag": "0003_rewards",
+      "breakpoints": true
     }
   ]
 }

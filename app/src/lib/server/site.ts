@@ -86,7 +86,9 @@ export async function listHubGames(db: Db) {
 			visibility: gamePresets.visibility,
 			hubState: gamePresets.hubState,
 			hubOrder: gamePresets.hubOrder,
-			hubLabel: gamePresets.hubLabel
+			hubLabel: gamePresets.hubLabel,
+			pointsOnComplete: gamePresets.pointsOnComplete,
+			leaderboardEnabled: gamePresets.leaderboardEnabled
 		})
 		.from(gamePresets)
 		.orderBy(asc(gamePresets.hubOrder), asc(gamePresets.createdAt));
@@ -95,7 +97,14 @@ export async function listHubGames(db: Db) {
 export async function updateHubGame(
 	db: Db,
 	id: string,
-	input: { hubState: HubState; visibility: Visibility; hubLabel: string; hubOrder: number }
+	input: {
+		hubState: HubState;
+		visibility: Visibility;
+		hubLabel: string;
+		hubOrder: number;
+		pointsOnComplete: number;
+		leaderboardEnabled: boolean;
+	}
 ) {
 	await db
 		.update(gamePresets)

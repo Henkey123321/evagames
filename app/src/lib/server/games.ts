@@ -5,6 +5,7 @@ import { getManifest } from '$lib/games/registry';
 import type { FinishResponse } from '$lib/games/sdk/types';
 import { isStaff, type SessionUser } from './auth';
 import { logActivity } from './activity';
+import { evaluateProgress, type ProgressOutcome } from './rewards';
 
 /** Who is playing: a signed-in user or an anonymous guest cookie. */
 export type Player = { userId: string; guestId?: string } | { userId?: undefined; guestId: string };
@@ -27,12 +28,17 @@ export async function listHubPresets(db: Db) {
 export type Access =
 	{ ok: true } | { ok: false; reason: 'login' | 'hidden' | 'coming_soon' | 'unknown_type' };
 
-export function presetAccess(preset: GamePreset, user: SessionUser | null): Access {
+/** `unlocked`: the fan has this (hidden) preset through a reward or an assignment. */
+export function presetAccess(
+	preset: GamePreset,
+	user: SessionUser | null,
+	opts: { unlocked?: boolean } = {}
+): Access {
 	if (!getManifest(preset.type)) return { ok: false, reason: 'unknown_type' };
 	if (isStaff(user)) return { ok: true }; // staff can preview anything
 	if (preset.hubState === 'coming_soon') return { ok: false, reason: 'coming_soon' };
 	// Hidden presets become reachable through assignments (Phase 3).
-	if (preset.visibility === 'hidden') return { ok: false, reason: 'hidden' };
+	if (preset.visibility === 'hidden' && !opts.unlocked) return { ok: false, reason: 'hidden' };
 	if (preset.visibility === 'members' && !user) return { ok: false, reason: 'login' };
 	return { ok: true };
 }
@@ -97,7 +103,8 @@ export async function finishPlay(
 	const score = Math.round(manifest.score(result));
 
 	let personalBest: boolean | undefined;
-	if (player.userId && outcome.verification !== 'rejected') {
+	const ranks = outcome.verification !== 'rejected' && (completed || !manifest.rankCompletedOnly);
+	if (player.userId && ranks) {
 		const agg = manifest.scoreOrder === 'desc' ? max(plays.score) : min(plays.score);
 		const previous = await db
 			.select({ best: agg })
@@ -107,7 +114,8 @@ export async function finishPlay(
 					eq(plays.userId, player.userId),
 					eq(plays.presetId, preset.id),
 					eq(plays.status, 'finished'),
-					ne(plays.verification, 'rejected')
+					ne(plays.verification, 'rejected'),
+					manifest.rankCompletedOnly ? eq(plays.completed, true) : undefined
 				)
 			)
 			.get();
@@ -130,17 +138,29 @@ export async function finishPlay(
 		.returning({ id: plays.id });
 	if (updated.length === 0) return { ok: false, error: 'already_finished' };
 
+	let progress: ProgressOutcome | undefined;
 	if (player.userId && outcome.verification !== 'rejected') {
 		await logActivity(db, player.userId, completed ? 'completed' : 'played', {
 			presetId: preset.id,
 			presetTitle: preset.title,
 			score
 		});
+		if (completed) {
+			progress = await evaluateProgress(db, player.userId, { completedPresetId: preset.id });
+		}
 	}
 
 	return {
 		ok: true,
-		response: { completed, verification: outcome.verification, score, personalBest }
+		response: {
+			completed,
+			verification: outcome.verification,
+			score,
+			personalBest,
+			pointsAwarded: progress?.pointsAwarded || undefined,
+			badges: progress?.badges.length ? progress.badges : undefined,
+			rewards: progress?.rewards.length ? progress.rewards : undefined
+		}
 	};
 }
 

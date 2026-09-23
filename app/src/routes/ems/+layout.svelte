@@ -11,6 +11,12 @@
 			{ href: '/ems', label: 'Home', show: true, exact: true },
 			{ href: '/ems/people', label: 'People', show: data.access.people, count: 0 },
 			{ href: '/ems/inbox', label: 'Inbox', show: data.access.messages, count: data.counts.unread },
+			{
+				href: '/ems/rewards',
+				label: 'Rewards',
+				show: data.access.rewards,
+				count: data.counts.rewardQueue
+			},
 			{ href: '/ems/site', label: 'Site', show: data.access.site },
 			{ href: '/ems/staff', label: 'Staff', show: data.access.staff }
 		].filter((item) => item.show)

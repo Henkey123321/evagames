@@ -1,5 +1,6 @@
 <script lang="ts">
 	import GameHost from '$lib/ui/GameHost.svelte';
+	import Leaderboard from '$lib/ui/Leaderboard.svelte';
 
 	let { data } = $props();
 	const game = $derived(data.game);
@@ -25,6 +26,13 @@
 			{#key game.slug}
 				<GameHost slug={game.slug} type={game.type} config={game.config} signedIn={!!data.user} />
 			{/key}
+			{#if data.leaderboard}
+				<Leaderboard
+					title="Best scores"
+					rows={data.leaderboard.map((r) => ({ name: r.name, value: r.score, isMe: r.isMe }))}
+					empty="No scores yet. Be the first."
+				/>
+			{/if}
 		</section>
 
 		{#if game.artRight}

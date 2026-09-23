@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { hasGameUnlock } from '$lib/server/rewards';
 import { getPresetBySlug, presetAccess, startPlay, type Player } from '$lib/server/games';
 import { ensureGuestId } from '$lib/server/guest';
 import { clientIp, rateLimit } from '$lib/server/guards';
@@ -17,7 +18,11 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 
 	const preset = await getPresetBySlug(locals.db, parsed.data.slug);
 	if (!preset) error(404, 'Game not found');
-	const access = presetAccess(preset, locals.user);
+	const unlocked =
+		preset.visibility === 'hidden' && locals.user
+			? await hasGameUnlock(locals.db, locals.user.id, preset.id)
+			: false;
+	const access = presetAccess(preset, locals.user, { unlocked });
 	if (!access.ok) error(access.reason === 'login' ? 401 : 403, 'This game is not available');
 
 	const player: Player = locals.user

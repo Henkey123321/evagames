@@ -49,7 +49,13 @@
 	</figcaption>
 
 	<div class="plot" bind:clientWidth={width}>
-		<svg width={W} height={H} viewBox="0 0 {W} {H}" role="img" aria-label="Games finished per day over the last 14 days">
+		<svg
+			width={W}
+			height={H}
+			viewBox="0 0 {W} {H}"
+			role="img"
+			aria-label="Games finished per day over the last 14 days"
+		>
 			{#each [0, top / 2, top] as tick (tick)}
 				<line class="grid" x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} />
 				<text class="tick" x={PAD.left - 6} y={y(tick) + 4} text-anchor="end">{tick}</text>

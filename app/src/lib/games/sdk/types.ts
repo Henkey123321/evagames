@@ -21,6 +21,14 @@ export interface GameManifest<Config = any, Result = any> {
 	/** Headline number for sorting and leaderboards. */
 	score(result: Result): number;
 	scoreOrder: 'asc' | 'desc';
+	/**
+	 * Only completed rounds count for bests and leaderboards. True for games ranked by
+	 * "fewest moves" (an abandoned Memory round would otherwise win); false for 2048,
+	 * where any finished round's score counts.
+	 */
+	rankCompletedOnly: boolean;
+	/** How a stored score reads on leaderboards (defaults to the number). */
+	formatScore?(score: number): string;
 	/** Whether a round counts as completed under this config. */
 	isComplete(config: Config, result: Result): boolean;
 	/**
@@ -84,6 +92,10 @@ export interface FinishResponse {
 	score: number;
 	/** Present when the player is signed in and this beat their previous best. */
 	personalBest?: boolean;
+	/** Points, badges and rewards this round earned (signed-in players). */
+	pointsAwarded?: number;
+	badges?: string[];
+	rewards?: { name: string; pending: boolean }[];
 }
 
 export interface GameStorage {

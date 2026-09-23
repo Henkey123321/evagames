@@ -118,10 +118,22 @@
 <div class="game-result" aria-live="polite">
 	{#if lastResult && lastResult.verification !== 'rejected'}
 		{#if signedIn}
-			<p class="notice">
-				{lastResult.completed ? 'Completed. ' : ''}Saved to your profile.
-				{#if lastResult.personalBest}<span class="badge badge-strong">Personal best</span>{/if}
-			</p>
+			<div class="notice">
+				<p>
+					{lastResult.completed ? 'Completed. ' : ''}Saved to your profile.
+					{#if lastResult.personalBest}<span class="badge badge-strong">Personal best</span>{/if}
+				</p>
+				{#if lastResult.pointsAwarded}<p>+{lastResult.pointsAwarded} points</p>{/if}
+				{#each lastResult.badges ?? [] as badge (badge)}<p>New badge: {badge}</p>{/each}
+				{#each lastResult.rewards ?? [] as reward (reward.name)}
+					<p>
+						{reward.pending ? 'Earned' : 'Unlocked'}: {reward.name}{reward.pending
+							? ' (Eva will approve it)'
+							: ''}.
+						<a class="text-link" href="/vault">Open your vault</a>
+					</p>
+				{/each}
+			</div>
 		{:else}
 			<p class="notice">
 				{lastResult.completed ? 'Completed. ' : ''}<a class="text-link" href="/signup"
@@ -136,5 +148,13 @@
 	.game-result {
 		min-height: 1px;
 		margin-top: 0.75rem;
+	}
+
+	.game-result .notice p {
+		margin: 0;
+	}
+
+	.game-result .notice p + p {
+		margin-top: 0.3rem;
 	}
 </style>

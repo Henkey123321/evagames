@@ -3,6 +3,7 @@ import { can } from '$lib/server/auth';
 import { users } from '$lib/server/db/schema';
 import { requireStaff } from '$lib/server/guards';
 import { unreadConversationsForStaff } from '$lib/server/messages';
+import { queueCount } from '$lib/server/rewards-admin';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
@@ -13,10 +14,11 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		messages: can(user, 'messages'),
 		site: can(user, 'site'),
 		staff: can(user, 'staff'),
+		rewards: can(user, 'rewards'),
 		analytics: can(user, 'analytics')
 	};
 
-	const [unread, toVerify] = await Promise.all([
+	const [unread, toVerify, rewardQueue] = await Promise.all([
 		access.messages ? unreadConversationsForStaff(locals.db) : 0,
 		access.people
 			? locals.db
@@ -34,8 +36,9 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 					)
 					.get()
 					.then((r) => r?.n ?? 0)
-			: 0
+			: 0,
+		access.rewards ? queueCount(locals.db) : 0
 	]);
 
-	return { user, access, counts: { unread, toVerify } };
+	return { user, access, counts: { unread, toVerify, rewardQueue } };
 };

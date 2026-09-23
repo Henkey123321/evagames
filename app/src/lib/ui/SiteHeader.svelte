@@ -32,6 +32,7 @@
 				>
 					Inbox{#if unread}<span class="utility-count">{unread}</span>{/if}
 				</a>
+				<a class="utility-link" href="/vault">Vault</a>
 			{/if}
 			<a class="utility-link utility-link-strong" href="/account">{user.displayName}</a>
 		{:else}

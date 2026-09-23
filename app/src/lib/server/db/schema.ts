@@ -44,6 +44,8 @@ export const users = sqliteTable(
 		lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }),
 		/** Last fan activity (play, message, profile change); drives EMS "newest first" ordering. */
 		lastActivityAt: integer('last_activity_at', { mode: 'timestamp_ms' }),
+		/** Cached sum of points_ledger for this user. */
+		points: integer('points').notNull().default(0),
 		createdAt: createdAt()
 	},
 	(t) => [
@@ -175,6 +177,162 @@ export const plays = sqliteTable(
 		index('plays_user_idx').on(t.userId, t.startedAt),
 		index('plays_guest_idx').on(t.guestId),
 		index('plays_preset_idx').on(t.presetId, t.startedAt)
+	]
+);
+
+/* ── Points, badges, rewards ─────────────────────────────────────────── */
+
+/** Every points change, so totals are auditable. `(user, reason, ref)` is unique for one-off awards. */
+export const pointsLedger = sqliteTable(
+	'points_ledger',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		delta: integer('delta').notNull(),
+		/** 'first_completion' | 'assignment' | 'manual' */
+		reason: text('reason').notNull(),
+		/** What it was for (preset id, assignment id); null for manual grants. */
+		ref: text('ref'),
+		note: text('note'),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [
+		index('points_user_idx').on(t.userId, t.createdAt),
+		uniqueIndex('points_once_uq').on(t.userId, t.reason, t.ref)
+	]
+);
+
+export const BADGE_RULES = ['manual', 'completions', 'points', 'completed_preset'] as const;
+export type BadgeRule = (typeof BADGE_RULES)[number];
+
+export const badges = sqliteTable('badges', {
+	id: id(),
+	name: text('name').notNull(),
+	description: text('description').notNull().default(''),
+	/** Short mark shown on the badge (an emoji or 1–3 letters). */
+	mark: text('mark').notNull().default('★'),
+	rule: text('rule', { enum: BADGE_RULES }).notNull().default('manual'),
+	/** Count / points threshold for 'completions' and 'points'. */
+	threshold: integer('threshold'),
+	presetId: text('preset_id').references(() => gamePresets.id, { onDelete: 'set null' }),
+	createdAt: createdAt(),
+	archivedAt: integer('archived_at', { mode: 'timestamp_ms' })
+});
+
+export const userBadges = sqliteTable(
+	'user_badges',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		badgeId: text('badge_id')
+			.notNull()
+			.references(() => badges.id, { onDelete: 'cascade' }),
+		awardedBy: text('awarded_by').references(() => users.id, { onDelete: 'set null' }),
+		awardedAt: createdAt()
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.badgeId] })]
+);
+
+export const REWARD_KINDS = ['link', 'task', 'game', 'manual', 'media'] as const;
+export type RewardKind = (typeof REWARD_KINDS)[number];
+
+export const PROOF_KINDS = ['none', 'text', 'image', 'text_image'] as const;
+export type ProofKind = (typeof PROOF_KINDS)[number];
+
+/** Kind-specific reward content. */
+export interface RewardContent {
+	/** link: a URL and/or a code revealed on unlock. */
+	url?: string;
+	code?: string;
+	/** task: instructions and what proof Eva wants back. */
+	instructions?: string;
+	proof?: ProofKind;
+	/** game: the (usually hidden) preset this unlocks. */
+	presetId?: string;
+	/** manual: note to staff about what to send. */
+	staffNote?: string;
+	/** media: asset ids (media library, Phase 3 part 4). */
+	assetIds?: string[];
+}
+
+export const rewards = sqliteTable('rewards', {
+	id: id(),
+	name: text('name').notNull(),
+	kind: text('kind', { enum: REWARD_KINDS }).notNull(),
+	/** Fan-facing text shown with the reward. */
+	message: text('message').notNull().default(''),
+	content: text('content', { mode: 'json' }).$type<RewardContent>().notNull().default({}),
+	/** Eva approves each unlock before the fan sees it. */
+	requiresApproval: integer('requires_approval', { mode: 'boolean' }).notNull().default(false),
+	createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+	createdAt: createdAt(),
+	archivedAt: integer('archived_at', { mode: 'timestamp_ms' })
+});
+
+export const TRIGGER_TYPES = ['preset_completed', 'points_reached', 'badge_earned'] as const;
+export type TriggerType = (typeof TRIGGER_TYPES)[number];
+
+/** When a reward unlocks automatically. Each trigger fires at most once per fan. */
+export const rewardTriggers = sqliteTable(
+	'reward_triggers',
+	{
+		id: id(),
+		rewardId: text('reward_id')
+			.notNull()
+			.references(() => rewards.id, { onDelete: 'cascade' }),
+		type: text('type', { enum: TRIGGER_TYPES }).notNull(),
+		presetId: text('preset_id').references(() => gamePresets.id, { onDelete: 'cascade' }),
+		threshold: integer('threshold'),
+		badgeId: text('badge_id').references(() => badges.id, { onDelete: 'cascade' }),
+		createdAt: createdAt()
+	},
+	(t) => [index('reward_triggers_type_idx').on(t.type)]
+);
+
+export const USER_REWARD_STATUSES = [
+	'pending_approval',
+	'unlocked',
+	'awaiting_fulfilment',
+	'submitted',
+	'done',
+	'declined'
+] as const;
+export type UserRewardStatus = (typeof USER_REWARD_STATUSES)[number];
+
+export const userRewards = sqliteTable(
+	'user_rewards',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		rewardId: text('reward_id')
+			.notNull()
+			.references(() => rewards.id, { onDelete: 'cascade' }),
+		status: text('status', { enum: USER_REWARD_STATUSES }).notNull(),
+		/** 'trigger:<id>', 'assignment:<id>' or 'manual:<uuid>': unique per user so triggers fire once. */
+		source: text('source').notNull(),
+		grantedBy: text('granted_by').references(() => users.id, { onDelete: 'set null' }),
+		/** Fan's task proof. */
+		proofText: text('proof_text'),
+		proofAssetId: text('proof_asset_id'),
+		/** Staff note back to the fan (on decline/approval). */
+		staffReply: text('staff_reply'),
+		resolvedBy: text('resolved_by').references(() => users.id, { onDelete: 'set null' }),
+		resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+		createdAt: createdAt(),
+		updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+			.notNull()
+			.default(sql`(unixepoch() * 1000)`)
+	},
+	(t) => [
+		uniqueIndex('user_rewards_source_uq').on(t.userId, t.rewardId, t.source),
+		index('user_rewards_status_idx').on(t.status, t.updatedAt),
+		index('user_rewards_user_idx').on(t.userId, t.createdAt)
 	]
 );
 
@@ -374,3 +532,6 @@ export type GamePreset = typeof gamePresets.$inferSelect;
 export type Play = typeof plays.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type Reward = typeof rewards.$inferSelect;
+export type Badge = typeof badges.$inferSelect;
+export type UserReward = typeof userRewards.$inferSelect;
