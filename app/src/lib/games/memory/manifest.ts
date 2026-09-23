@@ -82,6 +82,46 @@ export const manifestMemory: GameManifest<ConfigMemory, ResultMemory> = {
 		return `${moves} ${moves === 1 ? 'move' : 'moves'}, ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 	},
 	isComplete: (config, r) => r.cleared && r.pairs === config.pairs,
+	describeGoal: (c) => `Find all ${c.pairs} pairs`,
+	editor: [
+		{
+			key: 'pairs',
+			label: 'Pairs',
+			help: 'How many pairs to find (2 to 18).',
+			type: 'number',
+			min: 2,
+			max: 18
+		},
+		{
+			key: 'flipBackDelayMs',
+			label: 'Time a wrong pair stays visible (ms)',
+			type: 'number',
+			min: 200,
+			max: 3000,
+			step: 20
+		},
+		{ key: 'cardBackText', label: 'Letter on the card backs', type: 'text', maxLength: 3 },
+		{ key: 'winMessage', label: 'Win title', type: 'text', maxLength: 40 },
+		{ key: 'winCopy', label: 'Win message', type: 'text', maxLength: 200 }
+	],
+	targets: [
+		{
+			key: 'maxMoves',
+			label: 'In at most',
+			unit: ' moves',
+			min: 1,
+			max: 1000,
+			check: (r, v) => r.moves <= v
+		},
+		{
+			key: 'maxSeconds',
+			label: 'Within',
+			unit: ' seconds',
+			min: 5,
+			max: 3600,
+			check: (r, v) => r.timeSeconds <= v
+		}
+	],
 	verify(config, r, { durationMs }) {
 		if (r.pairs !== config.pairs)
 			return { verification: 'rejected', reason: 'pair count does not match preset' };

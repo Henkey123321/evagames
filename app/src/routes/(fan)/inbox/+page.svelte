@@ -5,6 +5,20 @@
 	import { ago, fullDate } from '$lib/format';
 
 	let { data, form } = $props();
+
+	/** Turns site links (/play/…) and https:// links in messages into clickable links. */
+	function linkify(text: string) {
+		const parts: { text: string; href?: string }[] = [];
+		const re = /(https:\/\/[^\s]+|\/(?:play|vault|inbox)\/?[^\s]*)/g;
+		let last = 0;
+		for (const m of text.matchAll(re)) {
+			if (m.index! > last) parts.push({ text: text.slice(last, m.index) });
+			parts.push({ text: m[0], href: m[0] });
+			last = m.index! + m[0].length;
+		}
+		if (last < text.length) parts.push({ text: text.slice(last) });
+		return parts;
+	}
 	let threadEl: HTMLDivElement | undefined = $state();
 	let sending = $state(false);
 
@@ -37,7 +51,10 @@
 		{/if}
 		{#each data.messages as m (m.id)}
 			<div class={['bubble', m.fromEva ? 'bubble-eva' : 'bubble-me']}>
-				<p>{m.body}</p>
+				<p>
+					{#each linkify(m.body) as part, i (i)}{#if part.href}<a href={part.href}>{part.text}</a
+							>{:else}{part.text}{/if}{/each}
+				</p>
 				<small title={fullDate(m.createdAt)}>{m.fromEva ? 'Eva' : 'You'}, {ago(m.createdAt)}</small>
 			</div>
 		{/each}
@@ -106,6 +123,12 @@
 		font-size: 0.72rem;
 		font-weight: 700;
 		color: var(--ink-soft);
+	}
+
+	.bubble-eva a {
+		color: inherit;
+		font-weight: 850;
+		text-underline-offset: 0.2em;
 	}
 
 	.bubble-eva p {

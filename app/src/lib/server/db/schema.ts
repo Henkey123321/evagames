@@ -171,7 +171,9 @@ export const plays = sqliteTable(
 		/** Headline number used for sorting and leaderboards (plugin-defined). */
 		score: integer('score'),
 		completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
-		verification: text('verification', { enum: VERIFICATIONS })
+		verification: text('verification', { enum: VERIFICATIONS }),
+		/** Set when the round was played for a game Eva sent (see assignments). */
+		assignmentId: text('assignment_id')
 	},
 	(t) => [
 		index('plays_user_idx').on(t.userId, t.startedAt),
@@ -333,6 +335,72 @@ export const userRewards = sqliteTable(
 		uniqueIndex('user_rewards_source_uq').on(t.userId, t.rewardId, t.source),
 		index('user_rewards_status_idx').on(t.status, t.updatedAt),
 		index('user_rewards_user_idx').on(t.userId, t.createdAt)
+	]
+);
+
+/* ── Sent games ─────────────────────────────────────────────────────── */
+
+export interface AssignmentTarget {
+	key: string;
+	value: number;
+}
+
+/** A game Eva sent to specific fans, with her own settings, rules and reward. */
+export const assignments = sqliteTable(
+	'assignments',
+	{
+		id: id(),
+		presetId: text('preset_id')
+			.notNull()
+			.references(() => gamePresets.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		message: text('message').notNull().default(''),
+		/** Only the settings that differ from the preset. */
+		configOverrides: text('config_overrides', { mode: 'json' })
+			.$type<Record<string, unknown>>()
+			.notNull()
+			.default({}),
+		targets: text('targets', { mode: 'json' }).$type<AssignmentTarget[]>().notNull().default([]),
+		deadline: integer('deadline', { mode: 'timestamp_ms' }),
+		maxAttempts: integer('max_attempts'),
+		points: integer('points').notNull().default(0),
+		rewardId: text('reward_id').references(() => rewards.id, { onDelete: 'set null' }),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: createdAt(),
+		cancelledAt: integer('cancelled_at', { mode: 'timestamp_ms' })
+	},
+	(t) => [index('assignments_created_idx').on(t.createdAt)]
+);
+
+export const RECIPIENT_STATUSES = [
+	'sent',
+	'in_progress',
+	'completed',
+	'failed',
+	'cancelled'
+] as const;
+export type RecipientStatus = (typeof RECIPIENT_STATUSES)[number];
+
+export const assignmentRecipients = sqliteTable(
+	'assignment_recipients',
+	{
+		assignmentId: text('assignment_id')
+			.notNull()
+			.references(() => assignments.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		status: text('status', { enum: RECIPIENT_STATUSES }).notNull().default('sent'),
+		attemptsUsed: integer('attempts_used').notNull().default(0),
+		bestScore: integer('best_score'),
+		completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+		updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+			.notNull()
+			.default(sql`(unixepoch() * 1000)`)
+	},
+	(t) => [
+		primaryKey({ columns: [t.assignmentId, t.userId] }),
+		index('recipients_user_idx').on(t.userId, t.status)
 	]
 );
 
@@ -535,3 +603,4 @@ export type Message = typeof messages.$inferSelect;
 export type Reward = typeof rewards.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 export type UserReward = typeof userRewards.$inferSelect;
+export type Assignment = typeof assignments.$inferSelect;

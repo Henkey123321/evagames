@@ -46,6 +46,63 @@ export const manifest2048: GameManifest<Config2048, Result2048> = {
 	scoreOrder: 'desc',
 	rankCompletedOnly: false,
 	isComplete: (config, r) => r.highestTile >= config.winValue,
+	describeGoal: (c) => `Reach the ${c.winValue} tile`,
+	editor: [
+		{
+			key: 'winValue',
+			label: 'Target tile',
+			help: 'The round is won when this tile appears.',
+			type: 'select',
+			options: [64, 128, 256, 512, 1024, 2048, 4096].map((v) => ({ value: v, label: String(v) }))
+		},
+		{
+			key: 'boardSize',
+			label: 'Board size',
+			help: 'Squares per side.',
+			type: 'number',
+			min: 3,
+			max: 6
+		},
+		{
+			key: 'fourSpawnChance',
+			label: 'Chance of a new 4',
+			help: 'Between 0 and 1. Higher is easier.',
+			type: 'number',
+			min: 0,
+			max: 1,
+			step: 0.05
+		},
+		{
+			key: 'moveDurationMs',
+			label: 'Slide speed (ms)',
+			type: 'number',
+			min: 60,
+			max: 400,
+			step: 10
+		},
+		{ key: 'backgroundDefault', label: 'Show the tile picture behind the board', type: 'boolean' },
+		{ key: 'winMessage', label: 'Win title', type: 'text', maxLength: 40 },
+		{ key: 'winCopy', label: 'Win message', type: 'text', maxLength: 200 },
+		{ key: 'loseMessage', label: 'Lose title', type: 'text', maxLength: 40 },
+		{ key: 'loseCopy', label: 'Lose message', type: 'text', maxLength: 200 }
+	],
+	targets: [
+		{
+			key: 'minScore',
+			label: 'Score at least',
+			min: 1,
+			max: 1_000_000,
+			check: (r, v) => r.score >= v
+		},
+		{
+			key: 'maxMoves',
+			label: 'In at most',
+			unit: ' moves',
+			min: 1,
+			max: 100_000,
+			check: (r, v) => r.moves <= v
+		}
+	],
 	verify(config, r, { durationMs }) {
 		if (r.highestTile !== 0 && !isPowerOfTwo(r.highestTile)) {
 			return { verification: 'rejected', reason: 'highest tile is not a power of two' };

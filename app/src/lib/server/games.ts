@@ -1,11 +1,13 @@
 import { and, asc, desc, eq, inArray, isNull, max, min, ne } from 'drizzle-orm';
 import type { Db } from './db';
-import { gamePresets, plays, type GamePreset } from './db/schema';
+import { assignments, gamePresets, plays, type GamePreset } from './db/schema';
 import { getManifest } from '$lib/games/registry';
 import type { FinishResponse } from '$lib/games/sdk/types';
 import { isStaff, type SessionUser } from './auth';
 import { logActivity } from './activity';
-import { evaluateProgress, type ProgressOutcome } from './rewards';
+import { awardPoints, evaluateProgress, grantReward, type ProgressOutcome } from './rewards';
+import { assignmentConfig, assignmentForFan, recordAssignmentResult } from './assignments';
+import { meetsTargets } from '$lib/games/sdk/editor';
 
 /** Who is playing: a signed-in user or an anonymous guest cookie. */
 export type Player = { userId: string; guestId?: string } | { userId?: undefined; guestId: string };
@@ -50,13 +52,14 @@ export function resolveConfig(preset: GamePreset) {
 	return manifest.configSchema.parse(preset.config ?? {});
 }
 
-export async function startPlay(db: Db, preset: GamePreset, player: Player) {
+export async function startPlay(db: Db, preset: GamePreset, player: Player, assignmentId?: string) {
 	const row = await db
 		.insert(plays)
 		.values({
 			presetId: preset.id,
 			userId: player.userId ?? null,
 			guestId: player.guestId ?? null,
+			assignmentId: assignmentId ?? null,
 			startedAt: new Date()
 		})
 		.returning({ id: plays.id })
@@ -94,12 +97,19 @@ export async function finishPlay(
 	if (!parsed.success)
 		return { ok: false, error: 'invalid_result', detail: parsed.error.issues[0]?.message };
 
-	const config = resolveConfig(preset);
+	// A sent game plays with Eva's settings and must also meet her targets.
+	const assignment = play.assignmentId
+		? await db.select().from(assignments).where(eq(assignments.id, play.assignmentId)).get()
+		: undefined;
+	const config = assignment ? assignmentConfig(preset, assignment) : resolveConfig(preset);
 	const result = parsed.data;
 	const finishedAt = new Date();
 	const durationMs = finishedAt.getTime() - play.startedAt.getTime();
 	const outcome = manifest.verify(config, result, { durationMs });
-	const completed = outcome.verification !== 'rejected' && manifest.isComplete(config, result);
+	const completed =
+		outcome.verification !== 'rejected' &&
+		manifest.isComplete(config, result) &&
+		(!assignment || meetsTargets(manifest, result, assignment.targets));
 	const score = Math.round(manifest.score(result));
 
 	let personalBest: boolean | undefined;
@@ -139,14 +149,57 @@ export async function finishPlay(
 	if (updated.length === 0) return { ok: false, error: 'already_finished' };
 
 	let progress: ProgressOutcome | undefined;
+	let assignmentState: FinishResponse['assignment'];
+	if (player.userId && assignment) {
+		const better = (prev: number | null) =>
+			outcome.verification !== 'rejected' &&
+			(prev === null || (manifest.scoreOrder === 'desc' ? score > prev : score < prev));
+		const status = await recordAssignmentResult(db, assignment, player.userId, {
+			completed,
+			score,
+			betterScore: better
+		});
+		const left = await assignmentForFan(db, assignment.id, player.userId);
+		assignmentState = { status, attemptsLeft: left?.attemptsLeft ?? null };
+	}
 	if (player.userId && outcome.verification !== 'rejected') {
 		await logActivity(db, player.userId, completed ? 'completed' : 'played', {
 			presetId: preset.id,
-			presetTitle: preset.title,
+			presetTitle: assignment ? assignment.title : preset.title,
 			score
 		});
 		if (completed) {
+			let extraPoints = 0;
+			const extraRewards: ProgressOutcome['rewards'] = [];
+			if (assignment && assignmentState?.status === 'completed') {
+				if (
+					assignment.points > 0 &&
+					(await awardPoints(db, {
+						userId: player.userId,
+						delta: assignment.points,
+						reason: 'assignment',
+						ref: assignment.id,
+						note: `Completed "${assignment.title}"`
+					}))
+				) {
+					extraPoints = assignment.points;
+				}
+				if (assignment.rewardId) {
+					const granted = await grantReward(db, {
+						userId: player.userId,
+						rewardId: assignment.rewardId,
+						source: `assignment:${assignment.id}`
+					});
+					if (granted)
+						extraRewards.push({
+							name: granted.name,
+							pending: granted.status === 'pending_approval'
+						});
+				}
+			}
 			progress = await evaluateProgress(db, player.userId, { completedPresetId: preset.id });
+			progress.pointsAwarded += extraPoints;
+			progress.rewards.unshift(...extraRewards);
 		}
 	}
 
@@ -159,7 +212,8 @@ export async function finishPlay(
 			personalBest,
 			pointsAwarded: progress?.pointsAwarded || undefined,
 			badges: progress?.badges.length ? progress.badges : undefined,
-			rewards: progress?.rewards.length ? progress.rewards : undefined
+			rewards: progress?.rewards.length ? progress.rewards : undefined,
+			assignment: assignmentState
 		}
 	};
 }

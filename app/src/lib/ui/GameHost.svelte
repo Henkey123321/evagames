@@ -8,15 +8,27 @@
 		slug,
 		type,
 		config,
-		signedIn
-	}: { slug: string; type: string; config: unknown; signedIn: boolean } = $props();
+		signedIn,
+		assignmentId = null,
+		onfinish
+	}: {
+		slug: string;
+		type: string;
+		config: unknown;
+		signedIn: boolean;
+		/** Set when playing a game Eva sent: counts attempts and uses her settings. */
+		assignmentId?: string | null;
+		/** Called with the server's verdict after each round. */
+		onfinish?: (response: FinishResponse) => void;
+	} = $props();
 
 	let container: HTMLDivElement | undefined = $state();
 	let loadError = $state(false);
 	let lastResult: FinishResponse | null = $state(null);
 
 	function createStorage(legacy: Record<string, string> = {}): GameStorage {
-		const key = (k: string) => `eva:${slug}:${k}`;
+		// Sent games save separately: their settings (board size, pairs) can differ.
+		const key = (k: string) => `eva:${slug}${assignmentId ? `:${assignmentId}` : ''}:${k}`;
 		return {
 			get<T>(k: string): T | null {
 				try {
@@ -54,7 +66,7 @@
 				playId = fetch('/api/play/start', {
 					method: 'POST',
 					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ slug })
+					body: JSON.stringify({ slug, assignmentId: assignmentId ?? undefined })
 				})
 					.then((r) => (r.ok ? (r.json() as Promise<{ playId: string }>) : null))
 					.then((d) => d?.playId ?? null)
@@ -72,6 +84,7 @@
 					});
 					if (!res.ok) return null;
 					lastResult = (await res.json()) as FinishResponse;
+					onfinish?.(lastResult);
 					return lastResult;
 				} catch {
 					return null;
@@ -98,7 +111,7 @@
 				mounted = client.mount(container, {
 					config,
 					session: createSession(),
-					storage: createStorage(client.legacyStorage)
+					storage: createStorage(assignmentId ? {} : client.legacyStorage)
 				});
 			})
 			.catch(() => (loadError = true));
@@ -123,6 +136,20 @@
 					{lastResult.completed ? 'Completed. ' : ''}Saved to your profile.
 					{#if lastResult.personalBest}<span class="badge badge-strong">Personal best</span>{/if}
 				</p>
+				{#if lastResult.assignment}
+					<p>
+						{#if lastResult.assignment.status === 'completed'}
+							You completed Eva's game.
+						{:else if lastResult.assignment.status === 'failed'}
+							No attempts left for this one.
+						{:else if lastResult.assignment.attemptsLeft !== null}
+							Not quite. {lastResult.assignment.attemptsLeft}
+							{lastResult.assignment.attemptsLeft === 1 ? 'attempt' : 'attempts'} left.
+						{:else}
+							Not quite. Try again.
+						{/if}
+					</p>
+				{/if}
 				{#if lastResult.pointsAwarded}<p>+{lastResult.pointsAwarded} points</p>{/if}
 				{#each lastResult.badges ?? [] as badge (badge)}<p>New badge: {badge}</p>{/each}
 				{#each lastResult.rewards ?? [] as reward (reward.name)}

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { audit } from '$lib/server/activity';
 import { HUB_STATES, VISIBILITIES } from '$lib/server/db/schema';
 import { requireStaff } from '$lib/server/guards';
+import { ART_OPTIONS } from '$lib/server/games-admin';
 import {
 	deleteFooterLink,
 	getFooterLinks,
@@ -14,15 +15,7 @@ import {
 } from '$lib/server/site';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Artwork and icons that ship with the site. Uploads arrive with the media library. */
-const ART = [
-	{ value: '/brand/body-left.png', label: 'Hub, left figure' },
-	{ value: '/brand/body-right.png', label: 'Hub, right figure' },
-	{ value: '/games/2048/body-left.png', label: '2048, left figure' },
-	{ value: '/games/2048/body-right.png', label: '2048, right figure' },
-	{ value: '/games/memory/body-left.png', label: 'Memory, left figure' },
-	{ value: '/games/memory/body-right.png', label: 'Memory, right figure' }
-];
+const ART = ART_OPTIONS;
 
 const ICONS = [
 	'onlyfans',

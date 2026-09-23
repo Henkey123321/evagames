@@ -11,6 +11,15 @@
 	const memberOf = $derived(new Set(p.lists.map((l) => l.id)));
 	let confirmDisable = $state(false);
 
+	const SENT_STATUS: Record<string, string> = {
+		sent: 'Not started',
+		in_progress: 'Playing',
+		completed: 'Completed',
+		failed: 'Out of attempts',
+		expired: 'Missed the deadline',
+		cancelled: 'Cancelled'
+	};
+
 	const REWARD_STATUS: Record<string, string> = {
 		pending_approval: 'Waiting for your approval',
 		unlocked: 'Unlocked',
@@ -366,6 +375,44 @@
 								{/each}
 							</ul>
 						</details>
+					{/if}
+				</section>
+			{/if}
+
+			{#if data.games}
+				<section class="ems-section" aria-labelledby="sent-games">
+					<h2 id="sent-games">Games you sent</h2>
+					<form
+						class="ems-panel ems-panel-pad ems-toolbar"
+						method="GET"
+						action="/ems/games/send-to"
+					>
+						<input type="hidden" name="to" value={u.id} />
+						<select class="ems-select" name="game" aria-label="Game to send">
+							{#each data.games.presets as g (g.id)}<option value={g.id}>{g.title}</option>{/each}
+						</select>
+						<button class="ems-btn ems-btn-small ems-btn-primary" type="submit"
+							>Send to {u.displayName}</button
+						>
+					</form>
+					{#if data.games.sent.length}
+						<ul class="ems-rows">
+							{#each data.games.sent as g (g.id)}
+								<li>
+									<a class="ems-row play-row" href="/ems/sent/{g.id}">
+										<span class="ems-row-main">
+											<span class="ems-row-title">{g.title}</span>
+											<span class="ems-row-sub"
+												>{SENT_STATUS[g.status] ?? g.status}{g.attemptsUsed
+													? `, ${g.attemptsUsed} tries`
+													: ''}</span
+											>
+										</span>
+										<span class="ems-row-meta">{ago(g.createdAt)}</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
 					{/if}
 				</section>
 			{/if}

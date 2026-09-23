@@ -19,6 +19,9 @@ import {
 } from '$lib/server/rewards-admin';
 import { logActivity } from '$lib/server/activity';
 import { notifyUser } from '$lib/server/push';
+import { assignmentsForPerson } from '$lib/server/assignments';
+import { gamePresets } from '$lib/server/db/schema';
+import { asc } from 'drizzle-orm';
 import { getManifest } from '$lib/games/registry';
 import { duration } from '$lib/format';
 import { MESSAGE_MAX, getThread, markReadByStaff, sendStaffMessage } from '$lib/server/messages';
@@ -52,7 +55,8 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 
 	const canMessage = can(me, 'messages');
 	const canReward = can(me, 'rewards');
-	const [lists, thread, rewardData] = await Promise.all([
+	const canGames = can(me, 'games');
+	const [lists, thread, rewardData, sentGames] = await Promise.all([
 		getLists(locals.db),
 		canMessage ? getThread(locals.db, params.id) : null,
 		canReward
@@ -69,6 +73,15 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 					library: library.map((r) => ({ id: r.id, name: r.name })),
 					badges: allBadges.map((b) => ({ id: b.id, name: b.name, mark: b.mark }))
 				}))
+			: null,
+		canGames
+			? Promise.all([
+					assignmentsForPerson(locals.db, params.id),
+					locals.db
+						.select({ id: gamePresets.id, title: gamePresets.title })
+						.from(gamePresets)
+						.orderBy(asc(gamePresets.title))
+				]).then(([sent, presets]) => ({ sent, presets }))
 			: null
 	]);
 	const justRead = canMessage && !!thread?.conversation?.unreadForStaff;
@@ -97,6 +110,7 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		lists,
 		canMessage,
 		rewards: rewardData,
+		games: sentGames,
 		justRead,
 		thread: thread?.messages.slice(-12) ?? null
 	};

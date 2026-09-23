@@ -31,11 +31,47 @@ export interface GameManifest<Config = any, Result = any> {
 	formatScore?(score: number): string;
 	/** Whether a round counts as completed under this config. */
 	isComplete(config: Config, result: Result): boolean;
+	/** The goal under these settings, in plain words (e.g. "Reach the 512 tile"). */
+	describeGoal(config: Config): string;
+	/** Settings Eva can change in the game editor and when sending the game (in display order). */
+	editor: EditorField[];
+	/** Optional goals Eva can add when sending the game, on top of normal completion. */
+	targets: TargetDef<Result>[];
 	/**
 	 * Server-side sanity check. `server` = the server could fully verify the result,
 	 * `plausible` = it passed bounds/timing checks only, `rejected` = impossible result.
 	 */
 	verify(config: Config, result: Result, ctx: VerifyContext): VerifyOutcome;
+}
+
+export type EditorField =
+	| {
+			key: string;
+			label: string;
+			help?: string;
+			type: 'number';
+			min: number;
+			max: number;
+			step?: number;
+	  }
+	| { key: string; label: string; help?: string; type: 'text'; maxLength: number }
+	| { key: string; label: string; help?: string; type: 'boolean' }
+	| {
+			key: string;
+			label: string;
+			help?: string;
+			type: 'select';
+			options: { value: string | number; label: string }[];
+	  };
+
+export interface TargetDef<Result> {
+	key: string;
+	/** Reads as "<label> <value><unit>", e.g. "At most 20 moves". */
+	label: string;
+	unit?: string;
+	min: number;
+	max: number;
+	check(result: Result, value: number): boolean;
 }
 
 export interface MetricDef<Result> {
@@ -96,6 +132,8 @@ export interface FinishResponse {
 	pointsAwarded?: number;
 	badges?: string[];
 	rewards?: { name: string; pending: boolean }[];
+	/** For games Eva sent: where this fan now stands. */
+	assignment?: { status: string; attemptsLeft: number | null };
 }
 
 export interface GameStorage {

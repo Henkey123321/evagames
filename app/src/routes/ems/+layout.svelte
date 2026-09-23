@@ -11,6 +11,7 @@
 			{ href: '/ems', label: 'Home', show: true, exact: true },
 			{ href: '/ems/people', label: 'People', show: data.access.people, count: 0 },
 			{ href: '/ems/inbox', label: 'Inbox', show: data.access.messages, count: data.counts.unread },
+			{ href: '/ems/games', label: 'Games', show: data.access.games, alsoFor: ['/ems/sent'] },
 			{
 				href: '/ems/rewards',
 				label: 'Rewards',
@@ -22,8 +23,10 @@
 		].filter((item) => item.show)
 	);
 
-	const isCurrent = (href: string, exact = false) =>
-		exact ? page.url.pathname === href : page.url.pathname.startsWith(href);
+	const isCurrent = (href: string, exact = false, alsoFor: string[] = []) =>
+		exact
+			? page.url.pathname === href
+			: [href, ...alsoFor].some((h) => page.url.pathname.startsWith(h));
 
 	// Keep unread counts fresh while the EMS is open and visible.
 	onMount(() => {
@@ -47,7 +50,10 @@
 
 		<nav class="ems-nav" aria-label="EMS">
 			{#each nav as item (item.href)}
-				<a href={item.href} aria-current={isCurrent(item.href, item.exact) ? 'page' : undefined}>
+				<a
+					href={item.href}
+					aria-current={isCurrent(item.href, item.exact, item.alsoFor) ? 'page' : undefined}
+				>
 					<span>{item.label}</span>
 					{#if item.count}<span class="ems-count">{item.count}</span>{/if}
 				</a>

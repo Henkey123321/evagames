@@ -411,6 +411,7 @@ a.ems-row:hover,
 
 .ems-field {
 	display: grid;
+	align-content: start;
 	gap: 0.3rem;
 }
 

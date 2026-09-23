@@ -15,6 +15,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		site: can(user, 'site'),
 		staff: can(user, 'staff'),
 		rewards: can(user, 'rewards'),
+		games: can(user, 'games'),
 		analytics: can(user, 'analytics')
 	};
 

@@ -207,6 +207,38 @@ export async function unreadConversationsForStaff(db: Db) {
 	return row?.n ?? 0;
 }
 
+export type BroadcastTarget =
+	'all' | { listId: string; listName: string } | { assignmentId: string; label: string };
+
+/** SQL selecting the targeted fans' ids as `uid`, plus its parameters. */
+function resolveAudience(target: BroadcastTarget) {
+	const active = `u.role = 'player' AND u.disabled_at IS NULL`;
+	if (target === 'all') {
+		return {
+			audience: `SELECT u.id AS uid FROM users u WHERE ${active}`,
+			audienceParams: [] as string[],
+			targetId: 'all',
+			targetLabel: 'Everyone'
+		};
+	}
+	if ('listId' in target) {
+		return {
+			audience: `SELECT lm.user_id AS uid FROM list_members lm JOIN users u ON u.id = lm.user_id
+			           WHERE lm.list_id = ? AND ${active}`,
+			audienceParams: [target.listId],
+			targetId: target.listId,
+			targetLabel: target.listName
+		};
+	}
+	return {
+		audience: `SELECT ar.user_id AS uid FROM assignment_recipients ar JOIN users u ON u.id = ar.user_id
+		           WHERE ar.assignment_id = ? AND ${active}`,
+		audienceParams: [target.assignmentId],
+		targetId: `assignment:${target.assignmentId}`,
+		targetLabel: target.label
+	};
+}
+
 /**
  * Sends the same message into every targeted fan's thread using a fixed number of
  * set-based statements, so it stays within D1's per-request query limit at any audience size.
@@ -214,16 +246,11 @@ export async function unreadConversationsForStaff(db: Db) {
  */
 export async function broadcast(
 	db: Db,
-	input: { staffId: string; body: string; target: 'all' | { listId: string; listName: string } }
+	input: { staffId: string; body: string; target: BroadcastTarget }
 ) {
 	// Raw D1 statements: Drizzle's D1 batch can't carry raw SQL with bound parameters.
 	const d1 = db.$client;
-	const toList = input.target !== 'all';
-	const audience = toList
-		? `SELECT lm.user_id AS uid FROM list_members lm JOIN users u ON u.id = lm.user_id
-		   WHERE lm.list_id = ? AND u.role = 'player' AND u.disabled_at IS NULL`
-		: `SELECT id AS uid FROM users WHERE role = 'player' AND disabled_at IS NULL`;
-	const audienceParams = input.target === 'all' ? [] : [input.target.listId];
+	const { audience, audienceParams, targetId, targetLabel } = resolveAudience(input.target);
 
 	const countRow = await d1
 		.prepare(`SELECT count(*) AS n FROM (${audience})`)
@@ -242,15 +269,7 @@ export async function broadcast(
 				`INSERT INTO broadcasts (id, author_id, body, target, target_label, recipient_count, created_at)
 				 VALUES (?, ?, ?, ?, ?, ?, ?)`
 			)
-			.bind(
-				broadcastId,
-				input.staffId,
-				input.body,
-				input.target === 'all' ? 'all' : input.target.listId,
-				input.target === 'all' ? 'Everyone' : input.target.listName,
-				recipientCount,
-				now
-			),
+			.bind(broadcastId, input.staffId, input.body, targetId, targetLabel, recipientCount, now),
 		d1
 			.prepare(
 				`INSERT OR IGNORE INTO conversations (id, user_id, last_message_at)

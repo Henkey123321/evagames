@@ -43,11 +43,16 @@ migrations/               D1 SQL migrations (0001_seed.sql seeds the 2048 + Memo
 
 ## Adding a game type
 
-1. `src/lib/games/<type>/manifest.ts`: config schema (zod), result schema, `isComplete`, `verify`, `score`.
+1. `src/lib/games/<type>/manifest.ts`: config schema (zod) and result schema, plus:
+   - `isComplete`, `verify` (server-side checks), `score`, `scoreOrder` and `rankCompletedOnly`
+   - `describeGoal(config)`: the goal in plain words, shown on sent games
+   - `editor`: the settings Eva can change. The EMS game editor and the send form build themselves from this.
+   - `targets`: optional goals Eva can add when sending (e.g. "In at most 20 moves")
+   - `metrics` / `formatScore`: how results read in the EMS and on leaderboards
 2. `src/lib/games/<type>/client.ts`: `mount(target, { config, session, storage })`. Call
    `session.begin()` on the first real move and `session.finish(result)` when the round ends.
 3. Register it in `src/lib/games/registry.ts` and `src/lib/games/clients.ts`.
-4. Add a preset row (migration now; the EMS game editor in Phase 3).
+4. Create a version in the EMS (Games → New game). No migration needed.
 
 ## Deployment (Cloudflare account: Henkey123321@proton.me)
 
