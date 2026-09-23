@@ -1,0 +1,376 @@
+/*
+  Shared UI for the new fan pages: utility bar, panels, forms, buttons, notices.
+  Same vocabulary as the hub and games: flat panels, hairline rules, uppercase
+  tracked labels, heavy tight headings. No shadows, no gradients.
+*/
+
+/* ── Utility bar (above the wordmark) ─────────────────────────────── */
+
+.utility-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.utility-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0;
+	border-top: 1px solid var(--line);
+	border-left: 1px solid var(--line);
+}
+
+.utility-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-height: 2.4rem;
+	padding: 0.5rem 0.8rem;
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	font-size: 0.66rem;
+	font-weight: 850;
+	letter-spacing: 0.16em;
+	text-decoration: none;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--panel);
+	transition:
+		background-color 150ms ease-out,
+		color 150ms ease-out;
+}
+
+.utility-link:hover {
+	color: var(--field);
+	background: var(--eva-red);
+}
+
+.utility-link-strong {
+	color: var(--field);
+	background: var(--eva-red);
+}
+
+.utility-link-strong:hover {
+	background: var(--eva-red-dark);
+}
+
+.utility-link:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring);
+}
+
+/* ── Content column ───────────────────────────────────────────────── */
+
+.content {
+	width: min(100%, 46rem);
+	margin: 0 auto;
+	padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.content-narrow {
+	width: min(100%, 30rem);
+}
+
+.page-title {
+	margin: 0 0 0.4rem;
+	font-size: clamp(2.6rem, 8vw, 5rem);
+	font-weight: 950;
+	line-height: 0.86;
+	letter-spacing: -0.075em;
+}
+
+.page-lede {
+	max-width: 52ch;
+	margin: 0 0 clamp(1rem, 3vw, 1.6rem);
+	font-size: clamp(0.9rem, 1.35vw, 1rem);
+	font-weight: 700;
+	line-height: 1.4;
+	color: var(--ink-soft);
+}
+
+.eyebrow {
+	margin: 0;
+	font-size: 0.66rem;
+	font-weight: 850;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--eva-mauve);
+}
+
+/* ── Panels ───────────────────────────────────────────────────────── */
+
+.panel {
+	display: grid;
+	gap: 1rem;
+	padding: clamp(1rem, 3vw, 1.5rem);
+	border: 1px solid var(--line);
+	background: var(--panel);
+}
+
+.panel + .panel {
+	border-top: 0;
+}
+
+.panel h2 {
+	margin: 0;
+	font-size: clamp(1.4rem, 3vw, 2rem);
+	font-weight: 900;
+	line-height: 0.95;
+	letter-spacing: -0.05em;
+}
+
+.panel p {
+	margin: 0;
+	line-height: 1.45;
+}
+
+.panel-muted {
+	background: transparent;
+}
+
+/* ── Forms ────────────────────────────────────────────────────────── */
+
+.form {
+	display: grid;
+	gap: 0.9rem;
+}
+
+.field {
+	display: grid;
+	gap: 0.35rem;
+}
+
+.field-label {
+	font-size: 0.64rem;
+	font-weight: 850;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--eva-mauve);
+}
+
+.field-hint {
+	font-size: 0.8rem;
+	font-weight: 600;
+	line-height: 1.35;
+	color: var(--ink-soft);
+}
+
+.field-error {
+	font-size: 0.8rem;
+	font-weight: 800;
+	color: var(--eva-red);
+}
+
+.input {
+	width: 100%;
+	min-height: 2.75rem;
+	padding: 0.6rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 0;
+	font: inherit;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--ink);
+	background: oklch(97% 0.012 336);
+	transition: border-color 150ms ease-out;
+}
+
+.input:focus-visible {
+	outline: none;
+	border-color: var(--eva-red);
+	box-shadow: var(--focus-ring);
+}
+
+.input[aria-invalid='true'] {
+	border-color: var(--eva-red);
+}
+
+.input-prefixed {
+	display: flex;
+	align-items: stretch;
+}
+
+.input-prefix {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 0.7rem;
+	border: 1px solid var(--line);
+	border-right: 0;
+	font-weight: 850;
+	color: var(--eva-mauve);
+	background: var(--panel-muted);
+}
+
+.check {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	font-weight: 700;
+	line-height: 1.35;
+	cursor: pointer;
+}
+
+.check input {
+	flex: none;
+	width: 1.1rem;
+	height: 1.1rem;
+	margin-top: 0.1rem;
+	accent-color: var(--eva-red);
+}
+
+.form-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+/* ── Buttons (extends .control-button from game.css) ──────────────── */
+
+.button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 2.75rem;
+	padding: 0.6rem 1.1rem;
+	border: 1px solid var(--eva-red);
+	font: inherit;
+	font-size: 0.72rem;
+	font-weight: 850;
+	letter-spacing: 0.16em;
+	text-decoration: none;
+	text-transform: uppercase;
+	color: var(--field);
+	background: var(--eva-red);
+	cursor: pointer;
+	transition:
+		background-color 150ms ease-out,
+		color 150ms ease-out,
+		transform 150ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+	background: var(--eva-red-dark);
+	transform: translateY(-1px);
+}
+
+.button:disabled {
+	opacity: 0.6;
+	cursor: progress;
+}
+
+.button-quiet {
+	color: var(--ink);
+	background: var(--panel);
+	border-color: var(--line);
+}
+
+.button-quiet:hover:not(:disabled) {
+	color: var(--field);
+	background: var(--eva-red);
+}
+
+.button:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring);
+}
+
+.text-link {
+	font-weight: 800;
+	color: var(--eva-red);
+	text-underline-offset: 0.2em;
+}
+
+/* ── Notices & badges ─────────────────────────────────────────────── */
+
+.notice {
+	padding: 0.75rem 0.9rem;
+	border: 1px solid var(--line);
+	border-left: 0.3rem solid var(--eva-red);
+	font-weight: 700;
+	line-height: 1.4;
+	background: var(--panel);
+}
+
+.notice-error {
+	color: var(--eva-red-dark);
+	background: oklch(90% 0.05 20);
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	width: fit-content;
+	padding: 0.22rem 0.45rem;
+	border: 1px solid currentColor;
+	font-size: 0.6rem;
+	font-weight: 850;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.badge-strong {
+	color: var(--field);
+	background: var(--eva-red);
+	border-color: var(--eva-red);
+}
+
+/* ── Recovery codes ───────────────────────────────────────────────── */
+
+.code-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0;
+	margin: 0;
+	padding: 0;
+	border-top: 1px solid var(--line);
+	border-left: 1px solid var(--line);
+	list-style: none;
+}
+
+.code-grid li {
+	padding: 0.7rem 0.8rem;
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+	font-size: 1rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	background: oklch(97% 0.012 336);
+}
+
+/* ── Simple data list ─────────────────────────────────────────────── */
+
+.rows {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	border-top: 1px solid var(--line);
+	list-style: none;
+}
+
+.rows li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem 1rem;
+	padding: 0.65rem 0;
+	border-bottom: 1px solid var(--line);
+	font-weight: 700;
+}
+
+.rows .meta {
+	font-size: 0.8rem;
+	color: var(--ink-soft);
+}
+
+@media (max-width: 520px) {
+	.code-grid {
+		grid-template-columns: 1fr;
+	}
+}

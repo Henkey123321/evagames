@@ -1,0 +1,9 @@
+{
+	"name": "Eva Games",
+	"short_name": "Eva Games",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#f1c6cf",
+	"theme_color": "#FFE0F6",
+	"icons": [{ "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" }]
+}

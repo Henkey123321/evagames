@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development.
+SETUP_TOKEN="local-setup-token"
+VAPID_PRIVATE_KEY=""
+TURNSTILE_SECRET=""

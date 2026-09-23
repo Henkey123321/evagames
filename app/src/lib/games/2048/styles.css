@@ -1,0 +1,196 @@
+/* 2048 game styles — scoped under .g2048 (ported from games/2048/styles.css). */
+
+.g2048 .scorebox .score-addition {
+	position: absolute;
+	top: 0.2em;
+	right: -0.35em;
+	z-index: 2;
+	font-size: 0.62em;
+	font-weight: 950;
+	line-height: 1;
+	letter-spacing: -0.03em;
+	color: var(--eva-red);
+	animation: score-rise 600ms ease-in both;
+	pointer-events: none;
+}
+
+.g2048 .bg-toggle {
+	gap: 0.4rem;
+	user-select: none;
+}
+
+.g2048 .bg-toggle input {
+	width: 0.92rem;
+	height: 0.92rem;
+	accent-color: var(--eva-red);
+}
+
+.g2048 .board-wrap {
+	background:
+		linear-gradient(oklch(93% 0.029 336 / 0.58), oklch(93% 0.029 336 / 0.58)),
+		var(--highest-gif, none) center / cover no-repeat,
+		var(--panel);
+	transition: background 180ms ease-out;
+}
+
+.g2048:not(.bg-on) .board-wrap {
+	background: var(--panel);
+}
+
+.g2048 .game-board {
+	position: relative;
+	z-index: 0;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	aspect-ratio: 1;
+	outline: none;
+	touch-action: none;
+	user-select: none;
+}
+
+.g2048 .tile-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.g2048 .cell {
+	position: relative;
+	min-width: 0;
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	background: oklch(86% 0.042 15 / 0.36);
+}
+
+.g2048 .tile {
+	position: absolute;
+	inset: clamp(0.28rem, 1.2vw, 0.58rem);
+	display: block;
+	overflow: hidden;
+	background:
+		linear-gradient(
+			180deg,
+			oklch(21.501% 0.08675 22.79 / 0.04),
+			oklch(21.501% 0.08675 22.79 / 0.24)
+		),
+		var(--panel-muted);
+	box-shadow: inset 0 0 0 1px oklch(98% 0.006 336 / 0.34);
+}
+
+.g2048 .tile-layer .tile {
+	--tile-gap: clamp(0.28rem, 1.2vw, 0.58rem);
+	inset: auto;
+}
+
+.g2048 .tile-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+	user-select: none;
+}
+
+.g2048 .tile-new {
+	animation: tile-appear 200ms ease 100ms backwards;
+}
+
+.g2048 .tile-merged {
+	z-index: 20;
+	animation: tile-pop 200ms ease 100ms backwards;
+}
+
+.g2048 .tile-settled {
+	animation: none;
+}
+
+.g2048 .tile-moving {
+	animation: none;
+	transition: transform var(--move-duration, 150ms) cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.g2048 .tile-moving.is-moving {
+	transform: translate(var(--move-x), var(--move-y));
+}
+
+.g2048 .tile::after {
+	position: absolute;
+	z-index: 1;
+	right: clamp(0.36rem, 1.2vw, 0.7rem);
+	bottom: clamp(0.28rem, 1vw, 0.56rem);
+	font-size: clamp(1rem, 5.4vw, 2.5rem);
+	font-weight: 950;
+	line-height: 0.86;
+	letter-spacing: -0.08em;
+	color: oklch(98% 0.006 336);
+	text-shadow:
+		0 1px 0 oklch(21.501% 0.08675 22.79 / 0.74),
+		0 0 1.1rem oklch(21.501% 0.08675 22.79 / 0.58);
+	content: attr(data-value);
+}
+
+.g2048 .game-message {
+	background: oklch(93% 0.029 336 / 0.88);
+	animation: message-fade-in 800ms ease 1200ms both;
+}
+
+.g2048 .control-button:focus-visible,
+.g2048 .bg-toggle:focus-within,
+.g2048 .game-board:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring);
+}
+
+@keyframes tile-appear {
+	0% {
+		opacity: 0;
+		transform: scale(0);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes tile-pop {
+	0% {
+		transform: scale(0);
+	}
+	50% {
+		transform: scale(1.2);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes score-rise {
+	0% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-2.9rem);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.g2048 .tile-new,
+	.g2048 .tile-merged,
+	.g2048 .scorebox .score-addition,
+	.g2048 .tile-moving,
+	.g2048 .game-message {
+		animation: none;
+		transition: none;
+	}
+}
+
+@media (max-width: 520px) {
+	.g2048 .tile::after {
+		font-size: clamp(0.9rem, 7vw, 1.8rem);
+	}
+}

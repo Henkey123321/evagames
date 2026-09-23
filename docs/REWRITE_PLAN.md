@@ -227,7 +227,12 @@ Each phase ends deployed to staging and reviewable.
 - Framework: **SvelteKit**. It was chosen over React Router v7 and Next.js for Cloudflare fit, small mobile bundles and less boilerplate.
 - Leaderboards: **opt-in public**, and Eva can toggle them per preset.
 - Task proof: **only when Eva asks for it**, in a form she picks per task (text, image or both).
-- Staging: **`*.workers.dev` URL** until the evagames.org domain is available.
+- Staging: **https://eva-games-staging.evagames.workers.dev** until the evagames.org domain is available (Cloudflare account: Henkey123321@proton.me).
 - Notifications: **in-site badges plus opt-in browser push**. No email for now, but it may come later.
 - Recovery: one-time recovery codes plus a staff-issued reset code.
 - Long videos: short clips are stored in R2. Cloudflare Stream is only worth considering if long videos become common.
+
+## 13. Progress
+
+- **Phase 1 (foundation): done** on 2026-09-23 and deployed to staging. Details are in `app/README.md`.
+- To do before Phase 3: enable **R2** in the Cloudflare dashboard (needed for media uploads).
