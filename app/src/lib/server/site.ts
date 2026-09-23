@@ -1,6 +1,12 @@
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { Db } from './db';
-import { footerLinks, siteSettings } from './db/schema';
+import {
+	footerLinks,
+	gamePresets,
+	siteSettings,
+	type HubState,
+	type Visibility
+} from './db/schema';
 
 /** Typed site settings with defaults; stored as JSON rows in `site_settings`. */
 export interface SiteSettings {
@@ -42,4 +48,57 @@ export async function getFooterLinks(db: Db) {
 		store: rows.filter((l) => l.group === 'store'),
 		social: rows.filter((l) => l.group === 'social')
 	};
+}
+
+export async function updateSettings(db: Db, values: Partial<SiteSettings>) {
+	for (const [key, value] of Object.entries(values)) {
+		await setSetting(db, key as keyof SiteSettings, value as string);
+	}
+}
+
+export interface FooterLinkInput {
+	label: string;
+	url: string;
+	icon: string;
+	group: 'store' | 'social';
+	sortOrder: number;
+	/** Layout tweak for particular icons (e.g. the wide IWantClips logo). */
+	extraClass: string;
+}
+
+export async function saveFooterLink(db: Db, id: string | null, input: FooterLinkInput) {
+	if (id) await db.update(footerLinks).set(input).where(eq(footerLinks.id, id));
+	else await db.insert(footerLinks).values(input);
+}
+
+export async function deleteFooterLink(db: Db, id: string) {
+	await db.delete(footerLinks).where(eq(footerLinks.id, id));
+}
+
+/** Hub placement of existing games; full game editing arrives with the preset editor. */
+export async function listHubGames(db: Db) {
+	return db
+		.select({
+			id: gamePresets.id,
+			slug: gamePresets.slug,
+			title: gamePresets.title,
+			type: gamePresets.type,
+			visibility: gamePresets.visibility,
+			hubState: gamePresets.hubState,
+			hubOrder: gamePresets.hubOrder,
+			hubLabel: gamePresets.hubLabel
+		})
+		.from(gamePresets)
+		.orderBy(asc(gamePresets.hubOrder), asc(gamePresets.createdAt));
+}
+
+export async function updateHubGame(
+	db: Db,
+	id: string,
+	input: { hubState: HubState; visibility: Visibility; hubLabel: string; hubOrder: number }
+) {
+	await db
+		.update(gamePresets)
+		.set({ ...input, updatedAt: new Date() })
+		.where(eq(gamePresets.id, id));
 }

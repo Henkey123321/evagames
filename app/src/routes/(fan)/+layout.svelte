@@ -13,6 +13,7 @@
 		user={data.user}
 		mainSiteUrl={data.settings.mainSiteUrl}
 		isHome={page.url.pathname === '/'}
+		unread={data.unread}
 	/>
 
 	<main id="main">

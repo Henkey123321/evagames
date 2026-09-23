@@ -42,9 +42,15 @@ export const users = sqliteTable(
 		leaderboardOptIn: integer('leaderboard_opt_in', { mode: 'boolean' }).notNull().default(false),
 		disabledAt: integer('disabled_at', { mode: 'timestamp_ms' }),
 		lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }),
+		/** Last fan activity (play, message, profile change); drives EMS "newest first" ordering. */
+		lastActivityAt: integer('last_activity_at', { mode: 'timestamp_ms' }),
 		createdAt: createdAt()
 	},
-	(t) => [uniqueIndex('users_username_uq').on(t.username), index('users_role_idx').on(t.role)]
+	(t) => [
+		uniqueIndex('users_username_uq').on(t.username),
+		index('users_role_idx').on(t.role),
+		index('users_activity_idx').on(t.lastActivityAt)
+	]
 );
 
 export const sessions = sqliteTable(
@@ -212,6 +218,115 @@ export const footerLinks = sqliteTable('footer_links', {
 	sortOrder: integer('sort_order').notNull().default(0)
 });
 
+/* ── EMS: organising people ─────────────────────────────────────────── */
+
+/** Eva's own folders ("VIPs", "New", …). A fan can be in several. */
+export const lists = sqliteTable('lists', {
+	id: id(),
+	name: text('name').notNull(),
+	sortOrder: integer('sort_order').notNull().default(0),
+	createdAt: createdAt()
+});
+
+export const listMembers = sqliteTable(
+	'list_members',
+	{
+		listId: text('list_id')
+			.notNull()
+			.references(() => lists.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		addedAt: createdAt()
+	},
+	(t) => [
+		primaryKey({ columns: [t.listId, t.userId] }),
+		index('list_members_user_idx').on(t.userId)
+	]
+);
+
+/** Per staff member: favourites are pinned above everyone else. */
+export const favorites = sqliteTable(
+	'favorites',
+	{
+		staffId: text('staff_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		createdAt: createdAt()
+	},
+	(t) => [primaryKey({ columns: [t.staffId, t.userId] })]
+);
+
+/** Private notes about a fan, visible to staff only. */
+export const staffNotes = sqliteTable(
+	'staff_notes',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		createdAt: createdAt()
+	},
+	(t) => [index('staff_notes_user_idx').on(t.userId, t.createdAt)]
+);
+
+/* ── Messages ───────────────────────────────────────────────────────── */
+
+/** One conversation per fan, between that fan and "Eva" (any staff with messages permission). */
+export const conversations = sqliteTable(
+	'conversations',
+	{
+		id: id(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		lastMessageAt: integer('last_message_at', { mode: 'timestamp_ms' }).notNull(),
+		lastMessagePreview: text('last_message_preview').notNull().default(''),
+		lastFromStaff: integer('last_from_staff', { mode: 'boolean' }).notNull().default(false),
+		unreadForStaff: integer('unread_for_staff').notNull().default(0),
+		unreadForFan: integer('unread_for_fan').notNull().default(0),
+		createdAt: createdAt()
+	},
+	(t) => [
+		uniqueIndex('conversations_user_uq').on(t.userId),
+		index('conversations_last_idx').on(t.lastMessageAt)
+	]
+);
+
+export const messages = sqliteTable(
+	'messages',
+	{
+		id: id(),
+		conversationId: text('conversation_id')
+			.notNull()
+			.references(() => conversations.id, { onDelete: 'cascade' }),
+		/** Null when the sending staff account was deleted. */
+		senderId: text('sender_id').references(() => users.id, { onDelete: 'set null' }),
+		fromStaff: integer('from_staff', { mode: 'boolean' }).notNull(),
+		body: text('body').notNull(),
+		/** Set when the message was part of a broadcast. */
+		broadcastId: text('broadcast_id'),
+		createdAt: createdAt()
+	},
+	(t) => [index('messages_conversation_idx').on(t.conversationId, t.createdAt)]
+);
+
+export const broadcasts = sqliteTable('broadcasts', {
+	id: id(),
+	authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+	body: text('body').notNull(),
+	/** 'all' or a list id. */
+	target: text('target').notNull(),
+	targetLabel: text('target_label').notNull(),
+	recipientCount: integer('recipient_count').notNull(),
+	createdAt: createdAt()
+});
+
 /* ── Tracking ───────────────────────────────────────────────────────── */
 
 /** Fan activity feed; drives the EMS "new stuff pops up" ordering. */
@@ -257,3 +372,5 @@ export const rateLimits = sqliteTable('rate_limits', {
 export type User = typeof users.$inferSelect;
 export type GamePreset = typeof gamePresets.$inferSelect;
 export type Play = typeof plays.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;

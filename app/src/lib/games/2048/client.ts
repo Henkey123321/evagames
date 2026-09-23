@@ -485,7 +485,8 @@ export const client2048: GameClient<Config2048, Result2048> = {
 			if (!direction) return;
 			// Don't hijack typing in form fields elsewhere on the page.
 			const target = event.target;
-			if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]')) return;
+			if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]'))
+				return;
 			event.preventDefault();
 			move(direction);
 		}

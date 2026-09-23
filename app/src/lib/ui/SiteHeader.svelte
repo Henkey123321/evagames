@@ -4,8 +4,14 @@
 	let {
 		user,
 		mainSiteUrl,
-		isHome = false
-	}: { user: SessionUser | null; mainSiteUrl: string; isHome?: boolean } = $props();
+		isHome = false,
+		unread = 0
+	}: {
+		user: SessionUser | null;
+		mainSiteUrl: string;
+		isHome?: boolean;
+		unread?: number;
+	} = $props();
 
 	const staff = $derived(user?.role === 'owner' || user?.role === 'staff');
 </script>
@@ -16,7 +22,17 @@
 	</div>
 	<div class="utility-group">
 		{#if user}
-			{#if staff}<a class="utility-link" href="/ems">EMS</a>{/if}
+			{#if staff}
+				<a class="utility-link" href="/ems">EMS</a>
+			{:else}
+				<a
+					class="utility-link"
+					href="/inbox"
+					aria-label={unread ? `Inbox, ${unread} unread` : 'Inbox'}
+				>
+					Inbox{#if unread}<span class="utility-count">{unread}</span>{/if}
+				</a>
+			{/if}
 			<a class="utility-link utility-link-strong" href="/account">{user.displayName}</a>
 		{:else}
 			<a class="utility-link" href="/login">Sign in</a>

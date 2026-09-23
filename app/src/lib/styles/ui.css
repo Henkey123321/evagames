@@ -47,6 +47,16 @@
 	background: var(--eva-red);
 }
 
+.utility-count {
+	min-width: 1.3rem;
+	padding: 0.1rem 0.35rem;
+	font-size: 0.62rem;
+	text-align: center;
+	letter-spacing: 0;
+	color: var(--field);
+	background: var(--eva-red);
+}
+
 .utility-link-strong {
 	color: var(--field);
 	background: var(--eva-red);
