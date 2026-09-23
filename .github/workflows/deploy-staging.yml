@@ -36,8 +36,8 @@ jobs:
       - name: Apply D1 migrations and deploy
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CF_STAGING_API_TOKEN }}
+          accountId: ${{ secrets.CF_STAGING_ACCOUNT_ID }}
           workingDirectory: app
           command: |
             d1 migrations apply eva-games-staging --remote

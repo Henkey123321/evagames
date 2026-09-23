@@ -59,7 +59,7 @@ Secrets (set once per environment with `npx wrangler secret put <NAME>`):
 - `VAPID_PRIVATE_KEY`: web-push private key matching `VAPID_PUBLIC_KEY` in `wrangler.jsonc`.
 - `TURNSTILE_SECRET` (optional): with `TURNSTILE_SITE_KEY` in `wrangler.jsonc`, enables the captcha on login/signup.
 
-GitHub Actions (`.github/workflows/deploy-staging.yml`) needs the repo secrets `CLOUDFLARE_API_TOKEN`
-(Workers Scripts: Edit, D1: Edit) and `CLOUDFLARE_ACCOUNT_ID`.
+GitHub Actions (`.github/workflows/deploy-staging.yml`) needs the repo secrets `CF_STAGING_API_TOKEN`
+(Workers Scripts: Edit, D1: Edit) and `CF_STAGING_ACCOUNT_ID`. The legacy `CLOUDFLARE_*` secrets are left for the old dashboard deploy on `main`.
 
 R2 (media uploads) is not enabled on the account yet. Enable it in the Cloudflare dashboard before Phase 3.
